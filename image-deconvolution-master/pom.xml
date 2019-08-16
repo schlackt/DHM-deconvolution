@@ -33,11 +33,11 @@
     </developers>
     
     <scm>
-		<connection>scm:git:git:github.com/schlackt/DHM-deconvolution</connection>
-		<developerConnection>scm:git:git@github.com/schlackt/DHM-deconvolution</developerConnection>
-		<tag>HEAD</tag>
-		<url>https://github.com/schlackt/DHM-deconvolution</url>
-	</scm>
+	<connection>scm:git:git:github.com/schlackt/DHM-deconvolution</connection>
+	<developerConnection>scm:git:git@github.com/schlackt/DHM-deconvolution</developerConnection>
+	<tag>HEAD</tag>
+	<url>https://github.com/schlackt/DHM-deconvolution</url>
+    </scm>
 
     <dependencies>
         <dependency>
