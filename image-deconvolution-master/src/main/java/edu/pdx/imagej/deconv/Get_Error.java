@@ -101,7 +101,7 @@ public class Get_Error implements PlugInFilter {
 							zeroCount += 1;
 				}
 		}
-		return Math.abs(ampError / (frames*slices*height*width - zeroCount));
+		return 100*Math.abs(ampError / (frames*slices*height*width - zeroCount));
 	}
 	
 	public void showAbout() {
