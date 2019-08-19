@@ -142,12 +142,13 @@ error. When it is done, the error will be displayed in a dialog box.
 
 ## Installation
 
-To install the plugin, compile with Maven and then put the .jar file into Fiji's `plugins` folder. You can also add the ImageJ update site https://sites.imagej.net/Schlar/.
+To install the plugin, compile with Maven and then put the .jar file into Fiji's `plugins` folder. 
+You can also add the ImageJ update site https://sites.imagej.net/Schlar/.
 
 ## References
 
 \[1\] Muthuvel Arigovindan, Jennifer C. Fung, Daniel Elnatan, Vito Mennella, Yee-Hung Mark
-Chan, Michael Pollard, Eric Branlund, John W. Sedat, and David A. Agard. Highresolution
+Chan, Michael Pollard, Eric Branlund, John W. Sedat, and David A. Agard. High resolution
 restoration of 3D structures from widefield images with extreme low signal-to-noise
 ratio. *Proceedings of the National Academy of Science*, 110(43):17344–17349, Oct
 2013.
