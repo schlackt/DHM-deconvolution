@@ -1,13 +1,14 @@
 DHM Deconvolution Plugin
 ========================
 
-This plugin is meant to deconvolve reconstructed DHM images. It contains four subplugins:
-Make Point Image, Create Hyperstack, Wiener Filter, and ER Deconvolution.
+This plugin is meant to deconvolve reconstructed DHM images. It contains five subplugins:
+Make Point Image, Create Hyperstack, Wiener Filter, ER Deconvolution, and Get Error.
 Make Point Image allows the user to create a simple image that contains a central dot.
 This plugin helps the user create point spread functions (PSFs). Create Hyperstack can be
 used to reformat images so they are compatible with the deconvolution plugins. Wiener
 Filter deconvolves images using the Wiener method, and ER Deconvolution deconvolves
-images using entropy regularization. Each of these plugins are described in greater detail
+images using entropy regularization. Get Error computes the percent error of a deconvolved
+image. Each of these plugins are described in greater detail
 below.
 
 ## Make Point Image
@@ -123,6 +124,21 @@ image when complete. Like the Wiener filter, this plugin assumes that signal is 
 noise, so the image should be inverted before deconvolution if that is not the case. This
 plugin is much more memory-intensive and time-consuming than the Wiener filter, so it may
 be less ideal for massive data sets.
+
+## Get Error
+
+This plugin computes the percent error of a deconvolved image. This is accomplished by
+convolving the deblurred image with the PSF and comparing the result with the original
+deblurred image. The percent error of the image is given as the mean percent error of
+each pixel. The plugin assumes that the deconvolved image is currently open. There are
+two inputs:
+* **PSF:** Dialog to open the PSF image. This should be the same PSF used to deconvolve
+the image.
+* **Blurred Image:** Dialog to open the original blurred image.
+
+Once the PSF and original blurred images are opened, the plugin calculates the percent
+error. When it is done, the error will be displayed in a dialog box.
+
 
 ## Installation
 
