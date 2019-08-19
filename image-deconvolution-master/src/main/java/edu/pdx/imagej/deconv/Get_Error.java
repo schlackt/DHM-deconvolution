@@ -86,12 +86,12 @@ public class Get_Error implements PlugInFilter {
 		int zeroCount = 0;
 		double ampError = 0;
 		float[][][] ampConv;
-		diu.normalizePSF(psfMat);
+		diu.normalize(psfMat);
 		for (int l = 0; l < frames; l++) {
-			diu.normalize(ampApprox[l], 0, 1);
-			diu.normalize(amp[l], 0, 1);
+			diu.normalize(ampApprox[l]);
+			diu.normalize(amp[l]);
 			ampConv = diu.getAmplitudeMat(diu.fourierConvolve(diu.toFFTform(ampApprox[l]), diu.toFFTform(psfMat)));
-			diu.normalize(ampConv, 0, 1);
+			diu.normalize(ampConv);
 			for (int i = 0; i < slices; i++)
 				for (int j = 0; j < height; j++)
 					for (int k = 0; k < width; k++) {

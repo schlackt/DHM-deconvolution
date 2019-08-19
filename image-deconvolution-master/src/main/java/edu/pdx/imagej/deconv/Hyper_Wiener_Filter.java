@@ -102,10 +102,11 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		// convert image stacks to matrices
 		float[][][][] ampMat = diu.getMatrix4D(image);
 		float[][][] psfMat = diu.getMatrix3D(PSF);
-		diu.normalizePSF(psfMat);
+		diu.normalize(psfMat);
 		
 		// put matrices into proper format for FFT (even columns are Real, odd columns are imaginary)
 		for (int i = 0; i < frames; i++) {
+			diu.normalize(ampMat[i]);
 			ampMat[i] = diu.toFFTform(ampMat[i]);
 			IJ.showProgress(i+1, 3*frames + 3);
 		}	
@@ -133,7 +134,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			ampMat[i] = diu.getAmplitudeMat(ampMat[i]);
 			ampMat[i] = diu.formatWienerAmp(ampMat[i]);
 			// normalize image based on desired output type
-			diu.normalize(ampMat[i], 0, norm);
+			diu.linearShift(ampMat[i], 0, norm);
 			IJ.showProgress(2*frames + i + 3, 3*frames + 3);
 		}
 

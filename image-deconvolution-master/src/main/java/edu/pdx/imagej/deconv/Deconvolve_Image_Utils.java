@@ -416,8 +416,8 @@ public class Deconvolve_Image_Utils {
 		return testImage;
 	}
 	
-	// normalize a 3D matrix so that all values fall between newMin and newMax
-	public void normalize (float[][][] mat, float newMin, float newMax) {
+	// shift a 3D matrix so that all values fall between newMin and newMax
+	public void linearShift (float[][][] mat, float newMin, float newMax) {
 		float min = mat[0][0][0];
 		float max = mat[0][0][0];
 		for (int i = 0; i < mat.length; i++)
@@ -444,18 +444,18 @@ public class Deconvolve_Image_Utils {
 		}
       }
     
-    // normalize a real PSF matrix so that all pixels add to 1
-    public void normalizePSF(float[][][] psfMat) {
+    // normalize a real matrix so that all pixels add to 1
+    public void normalize(float[][][] mat) {
     	float total = 0;
-    	for (int i = 0; i < psfMat.length; i++)
-    		for (int j = 0; j < psfMat[0].length; j++)
-    			for (int k = 0; k < psfMat[0][0].length; k++)
-    				total += psfMat[i][j][k];
+    	for (int i = 0; i < mat.length; i++)
+    		for (int j = 0; j < mat[0].length; j++)
+    			for (int k = 0; k < mat[0][0].length; k++)
+    				total += mat[i][j][k];
     	
-    	for (int i = 0; i < psfMat.length; i++)
-    		for (int j = 0; j < psfMat[0].length; j++)
-    			for (int k = 0; k < psfMat[0][0].length; k++)
-    				psfMat[i][j][k] = psfMat[i][j][k] / total;
+    	for (int i = 0; i < mat.length; i++)
+    		for (int j = 0; j < mat[0].length; j++)
+    			for (int k = 0; k < mat[0][0].length; k++)
+    				mat[i][j][k] = mat[i][j][k] / total;
     }
     
     // after deconvolution, the quadrants of the image are flipped around for some reason. This puts it back to normal.

@@ -99,9 +99,9 @@ public class Regularization implements PlugInFilter {
 		// convert image stacks to matrices
 		float[][][][] ampMat = diu.getMatrix4D(image);
 		for (int i = 0; i < ampMat.length; i++)
-			diu.normalize(ampMat[i], 0, 1);
+			diu.normalize(ampMat[i]);
 		float[][][] psfMat = diu.getMatrix3D(PSF);
-		diu.normalizePSF(psfMat);
+		diu.normalize(psfMat);
 		
 		// initialize the regularization
 		IJ.showStatus("Initializing...");

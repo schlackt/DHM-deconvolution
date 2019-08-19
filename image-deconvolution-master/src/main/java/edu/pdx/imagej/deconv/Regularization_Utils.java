@@ -429,7 +429,7 @@ public class Regularization_Utils {
 		for (int i = 0; i < frames; i++) {
 			guess[i] = diu.getAmplitudeMat(guess[i]);
 			guess[i] = diu.formatWienerAmp(guess[i]);
-			diu.normalize(guess[i], 0, norm);
+			diu.linearShift(guess[i], 0, norm);
 		}	
 	}
 	
