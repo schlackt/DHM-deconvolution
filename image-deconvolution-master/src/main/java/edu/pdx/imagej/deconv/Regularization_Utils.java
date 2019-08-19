@@ -20,6 +20,7 @@ public class Regularization_Utils {
 	private float wx;
 	private float wy;
 	private float wz;
+	private float spacing_ratio;
 	private float H0 = 0;
 	private int iter_total;
 	
@@ -59,6 +60,7 @@ public class Regularization_Utils {
 		frames = imgMat.length;
 		dx = img_dx;
 		dz = img_dz;
+		spacing_ratio = dx / dz;
 		smooth = smooth_p;
 		nonlinearity = nonlinearity_p;
 		iter_total = 3*frames*iterations + 10;
@@ -109,17 +111,17 @@ public class Regularization_Utils {
 					L2[i][j][2*k] = (float) (2 * Math.cos(wy) - 2);
 					L2[i][j][2*k + 1] = 0;
 					
-					L3[i][j][2*k] = (float) (2 * Math.cos(wz) - 2);
+					L3[i][j][2*k] = (float) (spacing_ratio * spacing_ratio * (2 * Math.cos(wz) - 2));
 					L3[i][j][2*k + 1] = 0;
 					
-					L4[i][j][2*k] = (float) (1 - Math.cos(wx) - Math.cos(wy) + Math.cos(wx + wy));
-					L4[i][j][2*k + 1] = (float) (Math.sin(wx) + Math.sin(wy) - Math.sin(wx + wy));
+					L4[i][j][2*k] = (float) (Math.sqrt(2) * (1 - Math.cos(wx) - Math.cos(wy) + Math.cos(wx + wy)));
+					L4[i][j][2*k + 1] = (float) (Math.sqrt(2) * (Math.sin(wx) + Math.sin(wy) - Math.sin(wx + wy)));
 					
-					L5[i][j][2*k] = (float) (1 - Math.cos(wy) - Math.cos(wz) + Math.cos(wy + wz));
-					L5[i][j][2*k + 1] = (float) (Math.sin(wy) + Math.sin(wz) - Math.sin(wy + wz));
+					L5[i][j][2*k] = (float) (Math.sqrt(2) * spacing_ratio * (1 - Math.cos(wy) - Math.cos(wz) + Math.cos(wy + wz)));
+					L5[i][j][2*k + 1] = (float) (Math.sqrt(2) * spacing_ratio * (Math.sin(wy) + Math.sin(wz) - Math.sin(wy + wz)));
 					
-					L6[i][j][2*k] = (float) (1 - Math.cos(wx) - Math.cos(wz) + Math.cos(wx + wz));
-					L6[i][j][2*k + 1] = (float) (Math.sin(wx) + Math.sin(wz) - Math.sin(wx + wz));
+					L6[i][j][2*k] = (float) (Math.sqrt(2) * spacing_ratio * (1 - Math.cos(wx) - Math.cos(wz) + Math.cos(wx + wz)));
+					L6[i][j][2*k + 1] = (float) (Math.sqrt(2) * spacing_ratio * (Math.sin(wx) + Math.sin(wz) - Math.sin(wx + wz)));
 				}
 		progress++;
 		IJ.showProgress(progress, iter_total);
