@@ -2,8 +2,6 @@ package edu.pdx.imagej.deconv;
 
 import org.jtransforms.fft.FloatFFT_3D;
 
-import ij.IJ;
-
 public class Regularization_Utils {
 	
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
@@ -12,7 +10,6 @@ public class Regularization_Utils {
 	private int height;
 	private int slices;
 	private int frames;
-	private int progress = 0;
 	private float smooth;
 	private float nonlinearity;
 	private float dx;
@@ -22,7 +19,6 @@ public class Regularization_Utils {
 	private float wz;
 	private float spacing_ratio;
 	private float H0 = 0;
-	private int iter_total;
 	
 	private float[][][] L1;
 	private float[][][] L2;
@@ -51,7 +47,7 @@ public class Regularization_Utils {
 	public float[][][][] guess;
 	
 	// mass initialization
-	public Regularization_Utils(float[][][][] image_mat, float[][][] psf_mat, float img_dx, float img_dz, float smooth_p, float nonlinearity_p, int iterations) {
+	public Regularization_Utils(float[][][][] image_mat, float[][][] psf_mat, float img_dx, float img_dz, float smooth_p, float nonlinearity_p) {
 		imgMat = image_mat;
 		psfMat = psf_mat;
 		width = imgMat[0][0][0].length;
@@ -63,7 +59,6 @@ public class Regularization_Utils {
 		spacing_ratio = dx / dz;
 		smooth = smooth_p;
 		nonlinearity = nonlinearity_p;
-		iter_total = 3*frames*iterations + 10;
 		fft3D = new FloatFFT_3D((long)slices, (long)height, (long)width);
 		
 		L1 = new float[slices][height][2*width];
@@ -123,47 +118,21 @@ public class Regularization_Utils {
 					L6[i][j][2*k] = (float) (Math.sqrt(2) * spacing_ratio * (1 - Math.cos(wx) - Math.cos(wz) + Math.cos(wx + wz)));
 					L6[i][j][2*k + 1] = (float) (Math.sqrt(2) * spacing_ratio * (Math.sin(wx) + Math.sin(wz) - Math.sin(wx + wz)));
 				}
-		progress++;
-		IJ.showProgress(progress, iter_total);
 		
 		// initialize the P matrix, P_I matrix, and guess according to the paper
 		// psfMat and imgMat are both out of Fourier space after these calls.
 		initializePmatFT();
-		progress++;
-		IJ.showProgress(progress, iter_total);
-		
 		initializeGuess();
-		progress++;
-		IJ.showProgress(progress, iter_total);
 		
 		// get filters out of Fourier space
 		fft3D.complexInverse(L1, true);
-		progress++;
-		IJ.showProgress(progress, iter_total);
-		
 		fft3D.complexInverse(L2, true);
-		progress++;
-		IJ.showProgress(progress, iter_total);
-		
 		fft3D.complexInverse(L3, true);
-		progress++;
-		IJ.showProgress(progress, iter_total);
-		
 		fft3D.complexInverse(L4, true);
-		progress++;
-		IJ.showProgress(progress, iter_total);
-		
 		fft3D.complexInverse(L5, true);
-		progress++;
-		IJ.showProgress(progress, iter_total);
-		
 		fft3D.complexInverse(L6, true);
-		progress++;
-		IJ.showProgress(progress, iter_total);
-		
+
 		getEnergyMeasure(false);
-		progress++;
-		IJ.showProgress(progress, iter_total);
 	}
 	
 	private void initializePmatFT() {
@@ -336,9 +305,6 @@ public class Regularization_Utils {
 				energyMeasure[i] = diu.matrixOperations(energyMeasure[i], diu.scaleMat(diu.matrixOperations(nPrime[i], guess[i], "multiply"), 100*smooth), "subtract");
 				energyMeasure[i] = diu.matrixOperations(energyMeasure[i], diu.scaleMat(diu.matrixOperations(wMat[i], guess[i], "multiply"), smooth), "subtract");
 				energyMeasure[i] = diu.matrixOperations(energyMeasure[i], diu.scaleMat(auxiliaryMat, smooth), "subtract");
-				
-				progress++;
-				IJ.showProgress(progress, iter_total);
 			}
 			else {
 				auxiliaryMat = diu.fourierConvolve(negativeIndex(L1), diu.matrixOperations(wMatTilde[i], diu.fourierConvolve(L1, guessTilde[i]), "multiply"));
@@ -374,9 +340,6 @@ public class Regularization_Utils {
 			dMat[i] = diu.matrixOperations(dMat[i], diu.scaleMat(wMat[i], smooth), "add");
 			dMat[i] = diu.matrixOperations(dMat[i], diu.scaleMat(auxiliaryMat, smooth), "add");
 			dMat[i] = diu.incrementComplex(dMat[i], H0);
-			
-			progress++;
-			IJ.showProgress(progress, iter_total);
 		}
 	}
 	
@@ -386,9 +349,6 @@ public class Regularization_Utils {
 			uMat[i] = diu.matrixOperations(identityMat, dMat[i], "divide");
 			uMat[i] = diu.matrixOperations(uMat[i], diu.fourierConvolve(piMatFT, energyMeasure[i]), "multiply");
 			uMat[i] = diu.fourierConvolve(piMatFT, uMat[i]);
-			
-			progress++;
-			IJ.showProgress(progress, iter_total);
 		}
 	}
 	

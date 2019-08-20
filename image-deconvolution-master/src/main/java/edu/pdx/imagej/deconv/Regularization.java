@@ -99,13 +99,13 @@ public class Regularization implements PlugInFilter {
 		// convert image stacks to matrices
 		float[][][][] ampMat = diu.getMatrix4D(image);
 		for (int i = 0; i < ampMat.length; i++)
-			diu.normalize(ampMat[i]);
+			diu.linearShift(ampMat[i], 0, 1);
 		float[][][] psfMat = diu.getMatrix3D(PSF);
 		diu.normalize(psfMat);
 		
 		// initialize the regularization
 		IJ.showStatus("Initializing...");
-		Regularization_Utils ru = new Regularization_Utils(ampMat, psfMat, lateral_spacing, axial_spacing, smooth, nonlinearity, iterations);
+		Regularization_Utils ru = new Regularization_Utils(ampMat, psfMat, lateral_spacing, axial_spacing, smooth, nonlinearity);
 		// deconvolve according to the flow chart in Arigovindan+ 2013 (supplementary information)
 		for (int i = 0; i < iterations; i++) {
 			IJ.showStatus("Processing iteration " + Integer.toString(i+1) + " of " + Integer.toString(iterations) + "...");
