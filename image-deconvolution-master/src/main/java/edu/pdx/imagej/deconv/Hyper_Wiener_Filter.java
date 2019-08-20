@@ -26,6 +26,8 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 	private int norm = 255;
 	private String path;
 	private String choice;
+	private boolean getSNR;
+	private float SNR;
 	
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
 
@@ -59,6 +61,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		String[] choices = {"8-bit", "16-bit", "32-bit"};
 		GenericDialog gd = new GenericDialog("Deconvolution Setup");
 		gd.addChoice("Output Image:", choices, "32-bit");
+		gd.addCheckbox("SNR?", true);
 
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -66,6 +69,18 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 
 		// get entered values
 		choice = gd.getNextChoice();
+		getSNR = gd.getNextBoolean();
+		
+		if (!getSNR) {
+			GenericDialog gd2 = new GenericDialog("Custom SNR");
+			gd2.addNumericField("SNR:", 0.001, 3);
+			
+			gd2.showDialog();
+			if (gd2.wasCanceled())
+				return false;
+			
+			SNR = (float) gd2.getNextNumber();
+		}
 		
 		if (choice == "8-bit")
 			choice = "GRAY8";
@@ -91,11 +106,13 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		diu.invert(PSF);
 		diu.invert(image);
 		
-		// get signal-to-noise through user input
-		Noise_NP nnp = new Noise_NP();
-		float noiseDev = nnp.getNoise(image);
-		float signal = nnp.getSignal(image);
-		float SNR = signal / noiseDev;
+		if (getSNR) {
+			// get signal-to-noise through user input
+			Noise_NP nnp = new Noise_NP();
+			float noiseDev = nnp.getNoise(image);
+			float signal = nnp.getSignal(image);
+			SNR = signal / noiseDev;
+		}
 
 		IJ.showStatus("Preprocessing...");
 		
