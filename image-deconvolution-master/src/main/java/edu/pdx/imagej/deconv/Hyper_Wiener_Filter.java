@@ -72,14 +72,14 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		getSNR = gd.getNextBoolean();
 		
 		if (!getSNR) {
-			GenericDialog gd2 = new GenericDialog("Custom SNR");
-			gd2.addNumericField("SNR:", 0.001, 3);
+			GenericDialog gd2 = new GenericDialog("Custom Beta");
+			gd2.addNumericField("Beta:", 0.001, 3);
 			
 			gd2.showDialog();
 			if (gd2.wasCanceled())
 				return false;
 			
-			SNR = (float) gd2.getNextNumber();
+			SNR = (float) (1 / gd2.getNextNumber());
 		}
 		
 		if (choice == "8-bit")
@@ -113,7 +113,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			float signal = nnp.getSignal(image);
 			SNR = signal / noiseDev;
 		}
-
+		
 		IJ.showStatus("Preprocessing...");
 		
 		// convert image stacks to matrices
