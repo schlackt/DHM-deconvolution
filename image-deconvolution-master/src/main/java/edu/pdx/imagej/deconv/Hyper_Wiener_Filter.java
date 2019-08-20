@@ -106,7 +106,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		
 		// put matrices into proper format for FFT (even columns are Real, odd columns are imaginary)
 		for (int i = 0; i < frames; i++) {
-			diu.normalize(ampMat[i]);
+			diu.linearShift(ampMat[i], 0, 1);
 			ampMat[i] = diu.toFFTform(ampMat[i]);
 			IJ.showProgress(i+1, 3*frames + 3);
 		}	
