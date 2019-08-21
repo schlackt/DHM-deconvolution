@@ -13,7 +13,6 @@ import ij.ImagePlus;
 import ij.gui.GenericDialog;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
-import org.jtransforms.fft.FloatFFT_3D;
 
 public class Hyper_Wiener_Filter implements PlugInFilter {
 	protected ImagePlus image;
@@ -23,11 +22,14 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 	private int height;
 	private int slices;
 	private int frames;
-	private int norm = 255;
 	private String path;
 	private String choice;
 	private boolean getSNR;
+	private boolean normalizePSF;
+	private boolean do_minimization;
 	private float SNR;
+	private float[][][][] ampMat;
+	private float[][][] psfMat;
 	
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
 
@@ -62,6 +64,8 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		GenericDialog gd = new GenericDialog("Deconvolution Setup");
 		gd.addChoice("Output Image:", choices, "32-bit");
 		gd.addCheckbox("SNR?", true);
+		gd.addCheckbox("Normalize PSF?", true);
+		gd.addCheckbox("Minimize Error?", true);
 
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -70,6 +74,8 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		// get entered values
 		choice = gd.getNextChoice();
 		getSNR = gd.getNextBoolean();
+		normalizePSF = gd.getNextBoolean();
+		do_minimization = gd.getNextBoolean();
 		
 		if (!getSNR) {
 			GenericDialog gd2 = new GenericDialog("Custom Beta");
@@ -88,7 +94,6 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			choice = "GRAY16";
 		else {
 			choice = "GRAY32";
-			norm = 1;
 		}
 
 		return true;
@@ -102,10 +107,6 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		}
 		PSF = IJ.openImage(path);
 		
-		//invert PSF and image so signal takes high values instead of low values
-		diu.invert(PSF);
-		diu.invert(image);
-		
 		if (getSNR) {
 			// get signal-to-noise through user input
 			Noise_NP nnp = new Noise_NP();
@@ -117,51 +118,51 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		IJ.showStatus("Preprocessing...");
 		
 		// convert image stacks to matrices
-		float[][][][] ampMat = diu.getMatrix4D(image);
-		float[][][] psfMat = diu.getMatrix3D(PSF);
-		diu.normalize(psfMat);
+		ampMat = diu.getMatrix4D(image);
+		psfMat = diu.getMatrix3D(PSF);
 		
-		// put matrices into proper format for FFT (even columns are Real, odd columns are imaginary)
-		for (int i = 0; i < frames; i++) {
-			diu.linearShift(ampMat[i], 0, 1);
-			ampMat[i] = diu.toFFTform(ampMat[i]);
-			IJ.showProgress(i+1, 3*frames + 3);
-		}	
-		psfMat = diu.toFFTform(psfMat);
-		FloatFFT_3D fft3D = new FloatFFT_3D((long)slices, (long)height, (long)width);
-		IJ.showProgress(frames+1, 3*frames + 3);
+		if (normalizePSF)
+			diu.normalize(psfMat);
 		
-		// carry out FFT
-		for (int i = 0; i < frames; i++) {
-			fft3D.complexForward(ampMat[i]);
-			IJ.showProgress(frames+i+2, 3*frames + 3);
+		Wiener_Utils wu = new Wiener_Utils(width, height, slices, frames, 1/SNR);
+		
+		if (!do_minimization) {
+			wu.deconvolve(ampMat, psfMat, true);
 		}
-		fft3D.complexForward(psfMat);
-		float[][][] psfConj = diu.complexConj(psfMat);
-		IJ.showProgress(2*frames + 2, 3*frames + 3);
-				
-		// now perform deconvolution operations, storing the result in ampMat
-		for (int i = 0; i < frames; i++) {
-			IJ.showStatus("Processing frame " + Integer.toString(i+1) + " of " + Integer.toString(frames) + "...");
-			ampMat[i] = diu.matrixOperations(psfConj, ampMat[i], "multiply");	
-			ampMat[i] = diu.matrixOperations(ampMat[i], diu.incrementComplex(diu.matrixOperations(psfMat, psfConj, "multiply"), 1/SNR), "divide");
-			fft3D.complexInverse(ampMat[i], true);
-			
-			// put complex matrices back into real matrices and format image
-			ampMat[i] = diu.getAmplitudeMat(ampMat[i]);
-			ampMat[i] = diu.formatWienerAmp(ampMat[i]);
-			// normalize image based on desired output type
-			diu.linearShift(ampMat[i], 0, norm);
-			IJ.showProgress(2*frames + i + 3, 3*frames + 3);
+		else {
+			wu.scale = bisect(wu, 0, 1, 1);
+			wu.deconvolve(ampMat, psfMat, true);
 		}
 
 		// store results in a new ImagePlus image and display it
 		IJ.showStatus("Wrapping up...");
-		ImagePlus ampImage = diu.reassign(ampMat, choice, "Result");
-		diu.invert(ampImage);
-		diu.invert(image);
+		ImagePlus ampImage = diu.reassign(wu.imgCopy, choice, "Result");
 		ampImage.show();
-		IJ.showProgress(3*frames + 3, 3*frames + 3);
+		IJ.showMessage("Error: " + Float.toString(wu.error) + "%");
+	}
+	
+	private float bisect(Wiener_Utils wu, float scale_left, float scale_right, float tol) {
+		float scale_mid = (float) (0.5 * (scale_left + scale_right));
+		wu.scale = scale_left;
+		wu.deconvolve(ampMat, psfMat, true);
+		float err_left = wu.error;
+		
+		wu.scale = scale_mid;
+		wu.deconvolve(ampMat, psfMat, true);
+		float err_mid = wu.error;
+		
+		wu.scale = scale_right;
+		wu.deconvolve(ampMat, psfMat, true);
+		float err_right = wu.error;
+		
+		if (Math.abs(err_right - err_left) <= tol)
+			return scale_mid;
+		else if (err_left < err_mid)
+			return bisect(wu, scale_left, scale_mid, tol);
+		else if (err_mid < err_right && !(err_mid < err_left))
+			return bisect(wu, scale_mid, scale_right, tol);
+		else
+			return bisect(wu, (float) (0.5 * (scale_left + scale_mid)), (float) (0.5 * (scale_mid + scale_right)), tol);
 	}
 	
 	public void showAbout() {
