@@ -521,4 +521,29 @@ public class Deconvolve_Image_Utils {
 		
 		return retMat;
 	}
+	
+	public double getError(float[][][][] ampApprox, float[][][][] amp, float[][][] psfMat) {
+		int frames = amp.length;
+		int slices = amp[0].length;
+		int height = amp[0][0].length;
+		int width = amp[0][0][0].length;
+		int zeroCount = 0;
+		double ampError = 0;
+		float[][][] ampConv;
+		for (int l = 0; l < frames; l++) {
+			normalize(ampApprox[l]);
+			normalize(amp[l]);
+			ampConv = getAmplitudeMat(fourierConvolve(toFFTform(ampApprox[l]), toFFTform(psfMat)));
+			normalize(ampConv);
+			for (int i = 0; i < slices; i++)
+				for (int j = 0; j < height; j++)
+					for (int k = 0; k < width; k++) {
+						if (amp[l][i][j][k] != 0)
+							ampError += (double)Math.abs(Math.abs(ampConv[i][j][k]) - Math.abs(amp[l][i][j][k])) / (double)Math.abs(amp[l][i][j][k]);
+						else
+							zeroCount += 1;
+				}
+		}
+		return 100*Math.abs(ampError / (frames*slices*height*width - zeroCount));
+	}
 }

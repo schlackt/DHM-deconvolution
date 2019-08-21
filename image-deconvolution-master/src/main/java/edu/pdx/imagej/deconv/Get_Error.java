@@ -19,11 +19,6 @@ public class Get_Error implements PlugInFilter {
 	protected ImagePlus image;
 	protected ImagePlus PSF;
 	protected ImagePlus origImage;
-
-	private int width;
-	private int height;
-	private int slices;
-	private int frames;
 	private String path;
 	
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
@@ -40,13 +35,7 @@ public class Get_Error implements PlugInFilter {
 	}
 
 	@Override
-	public void run(ImageProcessor ip) {
-		// get dimensions of image
-		width = ip.getWidth();
-		height = ip.getHeight();
-		slices = image.getNSlices();
-		frames = image.getNFrames();
-	
+	public void run(ImageProcessor ip) {	
 		process(ip);
 		image.updateAndDraw();
 	}
@@ -76,32 +65,10 @@ public class Get_Error implements PlugInFilter {
 		float[][][][] imgMatOld = diu.getMatrix4D(origImage);
 		float[][][] psfMat = diu.getMatrix3D(PSF);
 		
-		double err = getError(imgMat, imgMatOld, psfMat);
+		double err = diu.getError(imgMat, imgMatOld, psfMat);
 		DecimalFormat errFormat = new DecimalFormat("###0.00");
 		IJ.showMessage("Error: " + errFormat.format(err) + "%");
 		diu.invert(image);
-	}
-	
-	private double getError(float[][][][] ampApprox, float[][][][] amp, float[][][] psfMat) {
-		int zeroCount = 0;
-		double ampError = 0;
-		float[][][] ampConv;
-		diu.normalize(psfMat);
-		for (int l = 0; l < frames; l++) {
-			diu.normalize(ampApprox[l]);
-			diu.normalize(amp[l]);
-			ampConv = diu.getAmplitudeMat(diu.fourierConvolve(diu.toFFTform(ampApprox[l]), diu.toFFTform(psfMat)));
-			diu.normalize(ampConv);
-			for (int i = 0; i < slices; i++)
-				for (int j = 0; j < height; j++)
-					for (int k = 0; k < width; k++) {
-						if (amp[l][i][j][k] != 0)
-							ampError += (double)Math.abs(Math.abs(ampConv[i][j][k]) - Math.abs(amp[l][i][j][k])) / (double)Math.abs(amp[l][i][j][k]);
-						else
-							zeroCount += 1;
-				}
-		}
-		return 100*Math.abs(ampError / (frames*slices*height*width - zeroCount));
 	}
 	
 	public void showAbout() {
