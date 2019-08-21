@@ -527,19 +527,36 @@ public class Deconvolve_Image_Utils {
 		int slices = amp[0].length;
 		int height = amp[0][0].length;
 		int width = amp[0][0][0].length;
+		float[][][][] blurredCopy = new float[frames][slices][height][width];
+		float[][][][] originalCopy = new float[frames][slices][height][width];
+		float[][][] psfCopy = new float[slices][height][width];
+		
+		for (int i = 0; i < frames; i++)
+			for (int j = 0; j < slices; j++)
+				for (int k = 0; k < height; k++)
+					for (int l = 0; l < width; l++) {
+						blurredCopy[i][j][k][l] = ampApprox[i][j][k][l];
+						originalCopy[i][j][k][l] = amp[i][j][k][l]; 
+					}
+		
+		for (int j = 0; j < slices; j++)
+			for (int k = 0; k < height; k++)
+				for (int l = 0; l < width; l++) 
+					psfCopy[j][k][l] = psfMat[j][k][l];
+		
 		int zeroCount = 0;
 		double ampError = 0;
 		float[][][] ampConv;
 		for (int l = 0; l < frames; l++) {
-			normalize(ampApprox[l]);
-			normalize(amp[l]);
-			ampConv = getAmplitudeMat(fourierConvolve(toFFTform(ampApprox[l]), toFFTform(psfMat)));
+			normalize(blurredCopy[l]);
+			normalize(originalCopy[l]);
+			ampConv = getAmplitudeMat(fourierConvolve(toFFTform(blurredCopy[l]), toFFTform(psfCopy)));
 			normalize(ampConv);
 			for (int i = 0; i < slices; i++)
 				for (int j = 0; j < height; j++)
 					for (int k = 0; k < width; k++) {
-						if (amp[l][i][j][k] != 0)
-							ampError += (double)Math.abs(Math.abs(ampConv[i][j][k]) - Math.abs(amp[l][i][j][k])) / (double)Math.abs(amp[l][i][j][k]);
+						if (originalCopy[l][i][j][k] != 0)
+							ampError += Math.abs((ampConv[i][j][k] - originalCopy[l][i][j][k]) / originalCopy[l][i][j][k]);
 						else
 							zeroCount += 1;
 				}

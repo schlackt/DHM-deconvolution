@@ -27,6 +27,8 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 	private boolean getSNR;
 	private boolean normalizePSF;
 	private boolean do_minimization;
+	private boolean do_inversion;
+	private boolean get_error;
 	private float SNR;
 	private float[][][][] ampMat;
 	private float[][][] psfMat;
@@ -63,9 +65,11 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		String[] choices = {"8-bit", "16-bit", "32-bit"};
 		GenericDialog gd = new GenericDialog("Deconvolution Setup");
 		gd.addChoice("Output Image:", choices, "32-bit");
-		gd.addCheckbox("SNR?", true);
+		gd.addCheckbox("Invert Images?", true);
+		gd.addCheckbox("Get SNR?", true);
 		gd.addCheckbox("Normalize PSF?", true);
 		gd.addCheckbox("Minimize Error?", true);
+		gd.addCheckbox("Display Error?", true);
 
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -73,9 +77,11 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 
 		// get entered values
 		choice = gd.getNextChoice();
+		do_inversion = gd.getNextBoolean();
 		getSNR = gd.getNextBoolean();
 		normalizePSF = gd.getNextBoolean();
 		do_minimization = gd.getNextBoolean();
+		get_error = gd.getNextBoolean();
 		
 		if (!getSNR) {
 			GenericDialog gd2 = new GenericDialog("Custom Beta");
@@ -107,6 +113,11 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		}
 		PSF = IJ.openImage(path);
 		
+		if (do_inversion) {
+			diu.invert(image);
+			diu.invert(PSF);
+		}
+		
 		if (getSNR) {
 			// get signal-to-noise through user input
 			Noise_NP nnp = new Noise_NP();
@@ -126,19 +137,21 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		
 		Wiener_Utils wu = new Wiener_Utils(width, height, slices, frames, 1/SNR);
 		
-		if (!do_minimization) {
-			wu.deconvolve(ampMat, psfMat, true);
-		}
-		else {
-			wu.scale = bisect(wu, 0, 1, 1);
-			wu.deconvolve(ampMat, psfMat, true);
-		}
+		if (do_minimization)
+			wu.scale = bisect(wu, (float) (1 / 255 / height / width), 1, 1);
+		
+		wu.deconvolve(ampMat, psfMat, get_error);
 
 		// store results in a new ImagePlus image and display it
 		IJ.showStatus("Wrapping up...");
 		ImagePlus ampImage = diu.reassign(wu.imgCopy, choice, "Result");
+		if (do_inversion) {
+			diu.invert(image);
+			diu.invert(ampImage);
+		}
 		ampImage.show();
-		IJ.showMessage("Error: " + Float.toString(wu.error) + "%");
+		if (get_error)
+			IJ.showMessage("Error: " + Float.toString(wu.error) + "%");
 	}
 	
 	private float bisect(Wiener_Utils wu, float scale_left, float scale_right, float tol) {

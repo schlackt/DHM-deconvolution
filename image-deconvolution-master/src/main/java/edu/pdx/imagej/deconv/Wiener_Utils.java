@@ -30,8 +30,7 @@ public class Wiener_Utils {
 	// assumes imgMat and psfMat are not in FFT form
 	public void deconvolve(float[][][][] imgMat, float[][][] psfMat, boolean getError) {
 		for (int i = 0; i < frames; i++) {
-			imgCopy[i] = diu.scaleMat(imgMat[i], 1);
-			imgCopy[i] = diu.toFFTform(imgCopy[i]);
+			imgCopy[i] = diu.toFFTform(imgMat[i]);
 			fft3D.complexForward(imgCopy[i]);
 		}
 			
@@ -48,6 +47,7 @@ public class Wiener_Utils {
 			// put complex matrices back into real matrices and format image
 			imgCopy[i] = diu.getAmplitudeMat(imgCopy[i]);
 			imgCopy[i] = diu.formatWienerAmp(imgCopy[i]);
+			diu.linearShift(imgCopy[i], 0, 1);
 		}
 		fft3D.complexInverse(psfCopy, true);
 		psfCopy = diu.getAmplitudeMat(psfCopy);
