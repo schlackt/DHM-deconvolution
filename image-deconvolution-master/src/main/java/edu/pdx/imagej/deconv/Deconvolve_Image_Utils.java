@@ -548,10 +548,10 @@ public class Deconvolve_Image_Utils {
 		double ampError = 0;
 		float[][][] ampConv;
 		for (int l = 0; l < frames; l++) {
-			normalize(blurredCopy[l]);
-			normalize(originalCopy[l]);
+			linearShift(blurredCopy[l], 0, 1);
+			linearShift(originalCopy[l], 0, 1);
 			ampConv = getAmplitudeMat(fourierConvolve(toFFTform(blurredCopy[l]), toFFTform(psfCopy)));
-			normalize(ampConv);
+			linearShift(ampConv, 0, 1);
 			for (int i = 0; i < slices; i++)
 				for (int j = 0; j < height; j++)
 					for (int k = 0; k < width; k++) {
