@@ -8,6 +8,8 @@
 
 package edu.pdx.imagej.deconv;
 
+import java.io.File;
+
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
@@ -24,13 +26,20 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 	private int frames;
 	private String path;
 	private String choice;
+	private String stack_path;
+	private String save_path;
+	private File stacks;
+	private String[] stack_list;
 	private boolean getSNR;
 	private boolean normalizePSF;
 	private boolean do_minimization;
 	private boolean do_inversion;
 	private boolean get_error;
+	private boolean decon_hyper;
+	private boolean save_files;
 	private float SNR;
 	private float[][][][] ampMat;
+	private float[][][][] imgMat;
 	private float[][][] psfMat;
 	
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
@@ -70,6 +79,8 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		gd.addCheckbox("Normalize PSF?", true);
 		gd.addCheckbox("Minimize Error?", true);
 		gd.addCheckbox("Display Error?", true);
+		gd.addCheckbox("Deconvolve from Hyperstack?", true);
+		gd.addCheckbox("Save by Frame?", false);
 
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -82,6 +93,8 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		normalizePSF = gd.getNextBoolean();
 		do_minimization = gd.getNextBoolean();
 		get_error = gd.getNextBoolean();
+		decon_hyper = gd.getNextBoolean();
+		save_files = gd.getNextBoolean();
 		
 		if (!getSNR) {
 			GenericDialog gd2 = new GenericDialog("Custom Beta");
@@ -92,6 +105,25 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 				return false;
 			
 			SNR = (float) (1 / gd2.getNextNumber());
+		}
+		
+		// find the stack directory and get a list of the files in it
+		if (!decon_hyper) {
+			stack_path = diu.getDirectory("Please select the folder of stacks:");
+			stacks = new File(stack_path);
+			stack_list = stacks.list();
+		}
+		
+		// get desired save directory
+		if (save_files) {
+			save_path = diu.getDirectory("Select the save directory:");
+			save_path += "Deconvolved";
+			new File(save_path).mkdirs();
+
+			if (save_path.indexOf('\\') >= 0)
+				save_path += "\\";
+			else
+				save_path += "/";
 		}
 		
 		if (choice == "8-bit")
@@ -129,29 +161,80 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		IJ.showStatus("Preprocessing...");
 		
 		// convert image stacks to matrices
-		ampMat = diu.getMatrix4D(image);
 		psfMat = diu.getMatrix3D(PSF);
 		
 		if (normalizePSF)
 			diu.normalize(psfMat);
 		
-		Wiener_Utils wu = new Wiener_Utils(width, height, slices, frames, 1/SNR);
+		if (decon_hyper) {
+			ampMat = diu.getMatrix4D(image);
+			Wiener_Utils wu = new Wiener_Utils(width, height, slices, frames, 1/SNR);
 		
-		if (do_minimization)
-			wu.scale = bisect(wu, (float) (1 / 255 / height / width), 1, 1);
+			if (do_minimization)
+				wu.scale = bisect(wu, (float) (1 / 255 / height / width), 1, 1);
 		
-		wu.deconvolve(ampMat, psfMat, get_error);
+			wu.deconvolve(ampMat, psfMat, get_error);
 
-		// store results in a new ImagePlus image and display it
-		IJ.showStatus("Wrapping up...");
-		ImagePlus ampImage = diu.reassign(wu.imgCopy, choice, "Result");
-		if (do_inversion) {
-			diu.invert(image);
-			diu.invert(ampImage);
+			// store results in a new ImagePlus image and display it
+			if (!save_files) {
+				ImagePlus ampImage = diu.reassign(wu.imgCopy, choice, "Result");
+			
+				if (do_inversion)
+					diu.invert(ampImage);
+			
+				ampImage.show();
+				if (get_error)
+					IJ.showMessage("Error: " + Float.toString(wu.error) + "%");
+			}
+			else {
+				for (int i = 0; i < frames; i++) {
+					ImagePlus tempImg = diu.reassign(wu.imgCopy[i], choice, Integer.toString(i));
+					if (do_inversion)
+						diu.invert(tempImg);
+					IJ.saveAsTiff(tempImg, save_path + Integer.toString(i) + ".tif");
+				}
+			}
 		}
-		ampImage.show();
-		if (get_error)
-			IJ.showMessage("Error: " + Float.toString(wu.error) + "%");
+		else {
+			if (!save_files)
+				imgMat = new float[stack_list.length][slices][height][width];
+			Wiener_Utils wu = new Wiener_Utils(width, height, slices, 1, 1/SNR);
+			for (int i = 0; i < stack_list.length; i++) {
+				ImagePlus tempImg = IJ.openImage(stack_path + stack_list[i]);
+				if (do_inversion)
+					diu.invert(tempImg);
+				ampMat = diu.getMatrix4D(tempImg);
+				
+				if (do_minimization)
+					wu.scale = bisect(wu, (float) (1 / 255 / height / width), 1, 1);
+				
+				wu.deconvolve(ampMat, psfMat, get_error);
+				if (!save_files)
+					imgMat[i] = wu.imgCopy[0];
+				else {
+					tempImg = diu.reassign(wu.imgCopy[0], choice, Integer.toString(i));
+					if (do_inversion)
+						diu.invert(tempImg);
+					IJ.saveAsTiff(tempImg, save_path + Integer.toString(i) + ".tif");
+				}
+					
+				tempImg.close();
+			}
+			
+			if (!save_files) {
+				ImagePlus ampImage = diu.reassign(imgMat, choice, "Result");
+			
+				if (do_inversion)
+					diu.invert(ampImage);
+
+				ampImage.show();
+				if (get_error)
+					IJ.showMessage("Error: " + Float.toString(wu.error) + "%");
+			}
+		}
+		
+		if (do_inversion)
+			diu.invert(image);
 	}
 	
 	private float bisect(Wiener_Utils wu, float scale_left, float scale_right, float tol) {

@@ -190,7 +190,8 @@ public class Make_Hyperstack implements PlugInFilter {
 								hypStack.setVoxel(l, k, hyperStack.getStackIndex(1, (int)((i-z_start)/spacing) + 1, j-frame_start + 1) - 1, (double)tempStack.getVoxel(l, k, 0));
 							else
 								hypStack.setVoxel(l, k, hyperStack.getStackIndex(1, (int)((i-z_start)/spacing) + 1, 1) - 1, (double)tempStack.getVoxel(l, k, 0));
-						}	
+						}
+					tempImg.close();
 				}
 				catch (NullPointerException ex) {
 					IJ.showMessage("Missing image at z = " + zFormat.format(i) + ", frame " + frameFormat.format(j) + ". \nAttempted Directory: " + path);
