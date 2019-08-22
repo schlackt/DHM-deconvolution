@@ -86,7 +86,7 @@ public class Make_Hyperstack implements PlugInFilter {
 		if (gd.wasCanceled())
 			return false;
 
-		// get entered values and find directory
+		// get entered values
 		spacing = gd.getNextNumber();
 		z_start = gd.getNextNumber();
 		z_final = gd.getNextNumber();
@@ -96,6 +96,7 @@ public class Make_Hyperstack implements PlugInFilter {
 		prefixType = gd.getNextChoice();
 		choice = gd.getNextChoice();
 		
+		// get the directory and determine if the file system uses '\' or '/'
 		directory = diu.getDirectory("Select the image directory:");
 		if (directory.indexOf('\\') >= 0)
 			divisor = "\\";
