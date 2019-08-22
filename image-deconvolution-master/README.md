@@ -81,8 +81,8 @@ by drawing regions of interest. If unchecked, the plugin will prompt the user to
 custom number.
   * **Noise:** Prompt to select a noisy region of the open image.
   * **Signal:** Prompt to select a signal in the open image.
-  * **Beta:** Custom number to avoid division by zero if "Get Signal-to-Noise" is unchecked.
-  It should be small but nonzero.
+  * **Beta:** Prompt to enter custom number to avoid division by zero if "Get Signal-to-Noise"
+  is unchecked. It should be small but nonzero.
 * **Normalize PSF?:** If checked, the PSF will be normalized so that all of its pixels add
 to 1.
 * **Minimize Error?:** If checked, the plugin will attempt to minimize the error of the deblurred
