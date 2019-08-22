@@ -142,43 +142,6 @@ public class Deconvolve_Image_Utils {
 		}
 	}
 	
-	// take a reference to a 32-bit image slice's pixel array and assign a new image slice from a 3D matrix
-	private void assignPixels(float[] pixels, float[][][] newMat, int slice) {
-		int height = newMat[0][0].length;
-		int width = newMat[0].length;
-		for (int y = 0; y < height; y++) {
-			for (int x = 0; x < width; x++) {
-				pixels[x + y*width] = (float)newMat[slice][x][y];
-			}
-		}	
-	}
-	
-	// take a reference to an 8-bit image slice's pixel array and assign a new image slice from a 3D matrix
-	private void assignPixels(byte[] pixels, float[][][] newMat, int slice) {
-		int height = newMat[0][0].length;
-		int width = newMat[0].length;
-		for (int y = 0; y < height; y++) {
-			for (int x = 0; x < width; x++) {
-				// process each pixel of the line
-				// example: add 'number' to each pixel
-				pixels[x + y*width] = (byte)newMat[slice][x][y];
-			}
-		}	
-	}
-	
-	// take a reference to a 16-bit image slice's pixel array and assign a new image slice from a 3D matrix
-	private void assignPixels(short[] pixels, float[][][] newMat, int slice) {
-		int height = newMat[0][0].length;
-		int width = newMat[0].length;
-		for (int y = 0; y < height; y++) {
-			for (int x = 0; x < width; x++) {
-				// process each pixel of the line
-				// example: add 'number' to each pixel
-				pixels[x + y*width] = (short)newMat[slice][x][y];
-			}
-		}	
-	}
-	
 	// Show window to select an image file. Returns the file path as a string.
 	public String getPath(String message) {
 		String path;
@@ -359,24 +322,30 @@ public class Deconvolve_Image_Utils {
 	}
 	
 	// covert 3D matrix to ImagePlus image
-	public ImagePlus reassign(float[][][] testMat, String impType, String title) {
-		int slices = testMat.length;
-		int height = testMat[0][0].length;
-		int width = testMat[0].length;
-		
-		ImagePlus testImage = IJ.createImage(title, impType, width, height, slices);
-		for (int i = 0; i < slices; i++) {
+		public ImagePlus reassign(float[][][] testMat, String impType, String title) {
+			int frames = 1;
+			int width = testMat[0][0].length;
+			int height = testMat[0].length;
+			int slices = testMat.length;
+			int bitdepth = 24;
+			
 			if (impType == "GRAY32")
-				assignPixels((float[])testImage.getStack().getProcessor(i+1).getPixels(), testMat, i);
-			else if (impType == "GRAY16")
-				assignPixels((short[])testImage.getStack().getProcessor(i+1).getPixels(), testMat, i);
-			else
-				assignPixels((byte[])testImage.getStack().getProcessor(i+1).getPixels(), testMat, i);
-			IJ.showProgress(i, slices);
+				bitdepth = 32;
+			if (impType == "GRAY16")
+				bitdepth = 16;
+			if (impType == "GRAY8")
+				bitdepth = 8;
+			
+			ImagePlus testImage = IJ.createHyperStack("Result", width, height, 1, slices, frames, bitdepth);
+			ImageStack stack = testImage.getStack();
+			
+			for (int j = 1; j <= slices; j++)
+				for (int k = 0; k < height; k++)
+					for (int l = 0; l < width; l++)
+						stack.setVoxel(l, k, testImage.getStackIndex(1, j, 1)-1, (double)testMat[j-1][k][l]);
+
+			return testImage;
 		}
-		
-		return testImage;
-	}
 	
 	// covert 4D matrix to ImagePlus image
 	public ImagePlus reassign(float[][][][] testMat, String impType, String title) {

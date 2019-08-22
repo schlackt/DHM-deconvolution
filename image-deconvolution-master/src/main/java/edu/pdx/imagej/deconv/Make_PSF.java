@@ -55,7 +55,7 @@ public class Make_PSF implements PlugInFilter {
 	}
 	
 	public void process(ImageProcessor ip) {
-		float[][][] pointImageMat = new float[1][width][height];
+		float[][][] pointImageMat = new float[1][height][width];
 		boolean expVals = false;
 		int pointWidth = 1;
 		int pointHeight = 1;
@@ -65,8 +65,8 @@ public class Make_PSF implements PlugInFilter {
 		gd.addCheckbox("Use experimental values?", expVals);
 		gd.showDialog();
 		expVals = gd.getNextBoolean();
-		pointWidth = (int)gd.getNextNumber();
 		pointHeight = (int)gd.getNextNumber();
+		pointWidth = (int)gd.getNextNumber();
 		
 		for (int i = 0; i < height; i++)
 			for (int j = 0; j < width; j++) {
