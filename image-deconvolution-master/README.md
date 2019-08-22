@@ -1,14 +1,15 @@
 DHM Deconvolution Plugin
 ========================
 
-This plugin is meant to deconvolve reconstructed DHM images. It contains five subplugins:
-Make Point Image, Create Hyperstack, Wiener Filter, ER Deconvolution, and Get Error.
+This plugin is meant to deconvolve reconstructed DHM images. It contains six subplugins:
+Make Point Image, Create Hyperstack, Wiener Filter, ER Deconvolution, Get Error, and Resize PSF.
 Make Point Image allows the user to create a simple image that contains a central dot.
 This plugin helps the user create point spread functions (PSFs). Create Hyperstack can be
 used to reformat images so they are compatible with the deconvolution plugins. Wiener
 Filter deconvolves images using the Wiener method, and ER Deconvolution deconvolves
 images using entropy regularization. Get Error computes the percent error of a deconvolved
-image. Each of these plugins are described in greater detail
+image. Resize PSF allows the user to take an arbitrarily sized PSF and put it into the desired
+size for deconvolution. Each of these plugins are described in greater detail
 below.
 
 ## Make Point Image
@@ -44,7 +45,7 @@ at either the beginning of the filename (e.g. “00001_holo.tif”) or the end o
 5. Any prefixes or suffixes to the frame number (see examples above) must be uniform
 among *all* images.
 
-The plugin has 10 inputs:
+The plugin has 9 inputs:
 * **Axial Spacing (o.u.):** Space between z-planes as defined during reconstruction. This
 should be given in the original units (o.u.) used in reconstruction.
 * **Initial z (o.u.):** Desired starting slice for the 4D image, given in the image’s original
@@ -53,14 +54,12 @@ units.
 units.
 * **Initial Frame:** Desired starting frame for the 4D image.
 * **Final Frame:** Desired ending frame for the 4D image.
-* **Image Directory:** Filepath of the folder containing all z-plane folders.
 * **Filetype:** File type of the 2D images.
 * **Filename Type:** Dropbox to select whether the filenames contain a prefix, suffix, or
 just the frame number.
   * **Prefix/Suffix:** Prefix or suffix of the filenames, if they have one.
-* **Directory Style:** Dropbox to select whether the user’s system uses “\” or “/” to
-distinguish levels in a directory.
 * **Output Image:** Dropbox to select the output image type (8-, 16-, or 32-bit).
+* **Image Directory:** Prompt to select the folder containing all z-plane folders.
 
 After all of the inputs are entered, the plugin will construct and show the corresponding
 hyperstack. If an image is not found, the plugin will show a message containing the z value
@@ -73,27 +72,37 @@ the currently open image.
 This plugin implements the Wiener deconvolution method, which amounts to dividing
 out the PSF in Fourier space. The plugin assumes that the image to be deconvolved is
 currently open. This image can either be a 4D hyperstack (if deconvolving in time), or a
-single 3D image. There are four inputs:
+single 3D image. There are 10 inputs:
 * **Output Image:** Dropbox to select the output image type (8-, 16-, or 32-bit).
+* **Invert Images?:** If checked, the plugin will invert the blurred image and PSF before
+deconvolving. The result and original image are both inverted again after deconvolution.
+* **Get Signal-to-Noise?:** If checked, the plugin will prompt the user to define the SNR
+by drawing regions of interest. If unchecked, the plugin will prompt the user to enter a
+custom number.
+  * **Noise:** Prompt to select a noisy region of the open image.
+  * **Signal:** Prompt to select a signal in the open image.
+  * **Beta:** Custom number to avoid division by zero if "Get Signal-to-Noise" is unchecked.
+  It should be small but nonzero.
+* **Normalize PSF?:** If checked, the PSF will be normalized so that all of its pixels add
+to 1.
+* **Minimize Error?:** If checked, the plugin will attempt to minimize the error of the deblurred
+image by adjusting how the PSF is scaled. As currently designed, this feature will only find a
+local minima (not necessarily the absolute minimum).
+* **Display Error?:** If checked, the plugin will display the error of the deblurred image in a
+dialog box after deconvolution.
 * **PSF:** Dialog to open the PSF image. This should be a 3D image with the same
 dimensions as the image to be deconvolved.
-* **Noise:** Prompt to select a noisy region of the open image.
-* **Signal:** Prompt to select a signal in the open image.
 
-First, the plugin asks for the desired output image type. Then, a dialog appears asking the
+First, the plugin asks for the parameters above. Then, a dialog appears asking the
 user to navigate to the PSF image. This should be a 3D image with the same dimensions
 as the image to be deconvolved. The central z-plane on both the PSF and blurred image
 should be the focal plane.
 
 Once the PSF is selected, a dialog will appear asking the user to select a noisy region of
-the blurred image. This can be done by drawing a ROI of any shape around a noisy area
-and selecting “OK.” Then, a similar dialog will appear asking the user to draw another ROI
-around a region that contains a signal.
-
-The plugin will then carry out the deconvolution and open the deconvolved image. Note
-that this plugin assumes signal is darker than noise, so the signal takes on lower values than
-the background. If this is not the case for the image being deconvolved, then the blurred
-image should be inverted before running the plugin.
+the blurred image (if "Get Signal-to-Noise" was checked). This can be done by drawing a ROI
+of any shape around a noisy area and selecting “OK.” Then, a similar dialog will appear asking
+the user to draw another ROI around a region that contains a signal. The plugin will then carry
+out the deconvolution and open the deconvolved image.
 
 ## ER-Decon
 
@@ -120,10 +129,10 @@ be deconvolved, and the central z-plane on both the PSF and blurred image should
 focal plane.
 
 Once the PSF is selected, the plugin will begin deconvolution and open the deconvolved
-image when complete. Like the Wiener filter, this plugin assumes that signal is darker than
-noise, so the image should be inverted before deconvolution if that is not the case. This
-plugin is much more memory-intensive and time-consuming than the Wiener filter, so it may
-be less ideal for massive data sets.
+image when complete. This plugin assumes that signal is darker than noise, so the image
+should be inverted before deconvolution if that is not the case. This plugin is much more
+memory-intensive and time-consuming than the Wiener filter, so it may be less ideal for
+massive data sets.
 
 ## Get Error
 
@@ -139,10 +148,25 @@ the image.
 Once the PSF and original blurred images are opened, the plugin calculates the percent
 error. When it is done, the error will be displayed in a dialog box.
 
+## Resize PSF
+
+The deconvolution strategies used here require that the PSF has the same dimensions as
+the blurred image. In most cases, however, experimentally determined PSFs are cropped
+so that they are smaller than the blurred images. This plugin resizes PSFs that are
+smaller in width and/or height than the blurred image. The PSF must have the same number
+of slices as the blurred image. The plugin assumes that the PSF to be resized is currently
+opened. There are three inputs:
+* **New Height (px):** Desired height in pixels of the resized PSF.
+* **New Width (px):** Desired width in pixels of the resized PSF.
+* **Fill Randomly?:** If checked, empty regions are filled with random values selected from
+the PSF's border. If unchecked, empty regions are filled with the median of the PSF's border.
+
+The plugin centers the original PSF as much as possible, and then fills the empty regions
+either randomly or with a median. Once completed, the resized PSF will be displayed.
 
 ## Installation
 
-To install the plugin, compile with Maven and then put the .jar file into Fiji's `plugins` folder. 
+To install the plugin, compile with Maven and then put the .jar file into Fiji's `plugins` folder.
 You can also add the ImageJ update site https://sites.imagej.net/Schlar/.
 
 ## References
