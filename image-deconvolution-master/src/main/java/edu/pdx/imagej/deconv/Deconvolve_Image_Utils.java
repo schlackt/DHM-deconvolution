@@ -3,7 +3,7 @@ package edu.pdx.imagej.deconv;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
-import ij.gui.GenericDialog;
+import ij.io.DirectoryChooser;
 import ij.io.OpenDialog;
 import ij.process.ImageProcessor;
 import org.jtransforms.fft.FloatFFT_3D;
@@ -179,32 +179,21 @@ public class Deconvolve_Image_Utils {
 		}	
 	}
 	
-	// Show dialog window with a given message. Returns true if user presses "OK", false if user closes window or presses "Cancel"
-	private boolean showMessage(String message) {
-		GenericDialog gd = new GenericDialog("Information");
-		
-		gd.addMessage(message);
-		gd.showDialog();
-		
-		if (gd.wasCanceled())
-			return false;
-		
-		return true;
-	}
-	
 	// Show window to select an image file. Returns the file path as a string.
 	public String getPath(String message) {
 		String path;
 		OpenDialog od = new OpenDialog(message);
 		path = od.getPath();
-		while (path == null) {
-			if(showMessage("Please select a file.")) {
-				od = new OpenDialog(message);
-				path = od.getPath();
-			}
-			else
-				break;
-		}
+
+		return path;
+	}
+	
+	// Show window to select a directory. Returns the file path as a string.
+	public String getDirectory(String message) {
+		String path;
+		DirectoryChooser dc = new DirectoryChooser(message);
+		path = dc.getDirectory();
+	
 		return path;
 	}
 	

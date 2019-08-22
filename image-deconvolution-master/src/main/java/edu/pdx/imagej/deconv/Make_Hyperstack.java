@@ -23,27 +23,25 @@ import java.text.DecimalFormat;
 
 public class Make_Hyperstack implements PlugInFilter {
 	protected ImagePlus image;
-	protected ImagePlus PSF;
 
 	// image property members
 	private int width;
 	private int height;
 	private int slices;
 	private int frames;
-
-	// plugin parameters
-	public String choice;
-	public double spacing;
-	public double z_start;
-	public double z_final;
-	public int frame_start;
-	public int frame_final;
-	public String directory;
-	public String filetype;
-	public String prefixType;
-	public String divisor;
-	public String prefix;
-	public String suffix;
+	private String choice;
+	private double spacing;
+	private double z_start;
+	private double z_final;
+	private int frame_start;
+	private int frame_final;
+	private String directory;
+	private String filetype;
+	private String prefixType;
+	private String divisor;
+	private String prefix;
+	private String suffix;
+	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
 
 	@Override
 	public int setup(String arg, ImagePlus imp) {
@@ -72,7 +70,6 @@ public class Make_Hyperstack implements PlugInFilter {
 	
 	// Show window for various settings
 	private boolean showDialog() {
-		String[] directoryStyle = {"/", "\\"};
 		String[] choices = {"8-bit", "16-bit", "32-bit"};
 		String[] prefixChoices = {"Default (e.g. \"00001.tif\")", "Prefix (e.g. \"xxx00001.tif\")", "Suffix (e.g. \"00001xxx.tif\")"};
 		GenericDialog gd = new GenericDialog("Deconvolution Setup");
@@ -81,27 +78,30 @@ public class Make_Hyperstack implements PlugInFilter {
 		gd.addNumericField("Final z (o.u.): ", 200, 0);
 		gd.addNumericField("Initial Frame: ", 1, 0);
 		gd.addNumericField("Final Frame: ", 10, 0);
-		gd.addStringField("Image Directory: ", "", 15);
 		gd.addStringField("Filetype: ", ".tif");
 		gd.addChoice("Filename Type: ", prefixChoices, "Default (e.g. \"00001.tif\")");
-		gd.addChoice("Directory Style: ", directoryStyle, "\\");
 		gd.addChoice("Output Image:", choices, "32-bit");
 
 		gd.showDialog();
 		if (gd.wasCanceled())
 			return false;
 
-		// get entered values
+		// get entered values and find directory
 		spacing = gd.getNextNumber();
 		z_start = gd.getNextNumber();
 		z_final = gd.getNextNumber();
 		frame_start = (int) gd.getNextNumber();
 		frame_final = (int) gd.getNextNumber();
-		directory = gd.getNextString();
 		filetype = gd.getNextString();
 		prefixType = gd.getNextChoice();
-		divisor = gd.getNextChoice();
 		choice = gd.getNextChoice();
+		
+		directory = diu.getDirectory("Select the image directory:");
+		if (directory.indexOf('\\') >= 0)
+			divisor = "\\";
+		else
+			divisor = "/";
+			
 		prefix = "";
 		suffix = "";
 		
