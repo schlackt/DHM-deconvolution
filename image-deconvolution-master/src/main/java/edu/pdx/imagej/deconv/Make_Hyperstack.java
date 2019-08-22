@@ -15,6 +15,7 @@ import ij.gui.GenericDialog;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
+import java.io.File;
 import java.text.DecimalFormat;
 
 //import java.io.FileWriter;
@@ -41,6 +42,8 @@ public class Make_Hyperstack implements PlugInFilter {
 	private String divisor;
 	private String prefix;
 	private String suffix;
+	private String save_path;
+	private boolean save_frames;
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
 
 	@Override
@@ -81,6 +84,7 @@ public class Make_Hyperstack implements PlugInFilter {
 		gd.addStringField("Filetype: ", ".tif");
 		gd.addChoice("Filename Type: ", prefixChoices, "Default (e.g. \"00001.tif\")");
 		gd.addChoice("Output Image:", choices, "32-bit");
+		gd.addCheckbox("Save by Frames?", false);
 
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -95,6 +99,7 @@ public class Make_Hyperstack implements PlugInFilter {
 		filetype = gd.getNextString();
 		prefixType = gd.getNextChoice();
 		choice = gd.getNextChoice();
+		save_frames = gd.getNextBoolean();
 		
 		// get the directory and determine if the file system uses '\' or '/'
 		directory = diu.getDirectory("Select the image directory:");
@@ -102,6 +107,14 @@ public class Make_Hyperstack implements PlugInFilter {
 			divisor = "\\";
 		else
 			divisor = "/";
+		
+		// get the save directory if save_frames is true. Create a folder for the images.
+		if (save_frames) {
+			save_path = diu.getDirectory("Select the save directory:");
+			save_path += "Stacks";
+			new File(save_path).mkdirs();
+			save_path += divisor;
+		}
 			
 		prefix = "";
 		suffix = "";
@@ -148,13 +161,21 @@ public class Make_Hyperstack implements PlugInFilter {
 		
 		DecimalFormat zFormat = new DecimalFormat("###0.000");
 		DecimalFormat frameFormat = new DecimalFormat("00000");
-		ImagePlus hyperStack = IJ.createHyperStack("Result", width, height, 1, slices, frames, bitdepth);
+		ImagePlus hyperStack = IJ.createHyperStack("Blank", 1, 1, 1, 1, 1, bitdepth);
 		ImageStack hypStack = hyperStack.getStack();
+		if (!save_frames) {
+			hyperStack = IJ.createHyperStack("Result", width, height, 1, slices, frames, bitdepth);
+			hypStack = hyperStack.getStack();
+		}
 		ImagePlus tempImg;
 		ImageStack tempStack;
 		String path;
-		for (double i = z_start; i <= z_final; i += spacing) {
-			for (int j = frame_start; j <= frame_final; j++) {
+		for (int j = frame_start; j <= frame_final; j++) {
+			if (save_frames) {
+				hyperStack = IJ.createHyperStack(frameFormat.format(j), width, height, 1, slices, 1, bitdepth);
+				hypStack = hyperStack.getStack();
+			}
+			for (double i = z_start; i <= z_final; i += spacing) {				
 				if (directory.charAt(directory.length() - 1) == divisor.charAt(0))
 					path = directory + zFormat.format(i) + divisor + prefix + frameFormat.format(j) + suffix + filetype;
 				else
@@ -164,17 +185,25 @@ public class Make_Hyperstack implements PlugInFilter {
 					tempStack = tempImg.getStack();
 				
 					for (int k = 0; k < height; k++)
-						for (int l = 0; l < width; l++)
-							hypStack.setVoxel(l, k, hyperStack.getStackIndex(1, (int)((i-z_start)/spacing) + 1, j-frame_start + 1) - 1, (double)tempStack.getVoxel(l, k, 0));
+						for (int l = 0; l < width; l++) {
+							if (!save_frames)
+								hypStack.setVoxel(l, k, hyperStack.getStackIndex(1, (int)((i-z_start)/spacing) + 1, j-frame_start + 1) - 1, (double)tempStack.getVoxel(l, k, 0));
+							else
+								hypStack.setVoxel(l, k, hyperStack.getStackIndex(1, (int)((i-z_start)/spacing) + 1, 1) - 1, (double)tempStack.getVoxel(l, k, 0));
+						}	
 				}
 				catch (NullPointerException ex) {
 					IJ.showMessage("Missing image at z = " + zFormat.format(i) + ", frame " + frameFormat.format(j) + ". \nAttempted Directory: " + path);
 					return;
 				}
 				
-			}	
+			}
+			IJ.saveAsTiff(hyperStack, save_path + frameFormat.format(j) + ".tif");
+			IJ.showStatus("Processing frame" + frameFormat.format(j) + "...");
+			IJ.showProgress(j+1, (int)(frame_final - frame_start));
 		}
-		hyperStack.show();
+		if (!save_frames)
+			hyperStack.show();
 	}
 	
 	public void showAbout() {
