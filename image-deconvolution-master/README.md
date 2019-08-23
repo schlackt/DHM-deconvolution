@@ -75,7 +75,7 @@ currently open image.
 ## Wiener Filter
 
 This plugin implements the Wiener deconvolution method, which amounts to dividing
-out the PSF in Fourier space. The plugin can either deconvolve the currently open image 
+out the PSF in Fourier space. The plugin can either deconvolve the currently open image
 or all images in a specified directory. The plugin will work with 4D hyperstacks and 3D stacks.
 There are 14 inputs:
 * **Output Image:** Dropbox to select the output image type (8-, 16-, or 32-bit).
@@ -103,7 +103,7 @@ If unchecked, the plugin will prompt the user for the directory where the image 
 save deconvolved images. The images are stored as stacks and ordered by frame in a folder named `Deconvolved`.
 If unchecked, the plugin will open a hyperstack when deconvolution is complete.
 	* **Save Directory:** Prompt to select the directory in which to save deconvolved frames. A folder
-	named `Deconvolved` will be created in this directory, and deconvolved images will be placed there. 
+	named `Deconvolved` will be created in this directory, and deconvolved images will be placed there.
 * **PSF:** Dialog to open the PSF image. This should be a 3D image with the same
 dimensions as the image to be deconvolved.
 
@@ -122,13 +122,24 @@ out the deconvolution and open the deconvolved image (if the user is not saving 
 
 This plugin implements the deconvolution strategy developed by Arigovindan+ 2013 \[1\].
 Like the Wiener Filter, this plugin assumes that the image to be deconvolved is currently
-open. The blurred image can be either 3D or 4D. There are seven inputs:
+open. The blurred image can be either 3D or 4D. There are 12 inputs:
 * **Output Image:** Dropbox to select the output image type (8-, 16-, or 32-bit).
 * **Smoothness Factor:** Free parameter that affects the smoothness of the output image.
 * **Nonlinearity Factor:** Free parameter that affects the restoration of weak intensities.
 * **# Iterations:** Number of iterations to be performed.
 * **Lateral Spacing (o.u.):** Pixel size in the original units of reconstruction.
 * **Axial Spacing (o.u.):** Size between z-planes in the original units of reconstruction.
+* **Normalize PSF?:** If checked, the PSF will be normalized so that all of its pixels add
+to 1.
+* **Deconvolve from Hyperstack?** If checked, the plugin will deconvolve the currently opened image.
+If unchecked, the plugin will prompt the user for the directory where the image stacks are stored.
+	* **Stack Directory:** Prompt to select the folder in which the stacks to be deconvolved are stored.
+	This folder should *only* contain stacks.
+* **Save by Frame?** If checked, the plugin will prompt the user to select the directory in which to
+save deconvolved images. The images are stored as stacks and ordered by frame in a folder named `Deconvolved`.
+If unchecked, the plugin will open a hyperstack when deconvolution is complete.
+	* **Save Directory:** Prompt to select the directory in which to save deconvolved frames. A folder
+	named `Deconvolved` will be created in this directory, and deconvolved images will be placed there.
 * **PSF:** Dialog to open the PSF image. This should be a 3D image with the same
 dimensions as the image to be deconvolved.
 
@@ -137,14 +148,12 @@ image, and they may need to be optimized in order to obtain the best results. Th
 of iterations will also affect the output image and may need to be optimized. A high number
 of iterations will both take a long time to complete and may result in a washed-out image.
 
-After the first six inputs are entered, a dialog will appear asking the user to select the
+After the first eleven inputs are entered, a dialog will appear asking the user to select the
 PSF image. Again, this should be a 3D image with the same dimensions as the image to
 be deconvolved, and the central z-plane on both the PSF and blurred image should be the
 focal plane.
 
-Once the PSF is selected, the plugin will begin deconvolution and open the deconvolved
-image when complete. This plugin assumes that signal is darker than noise, so the image
-should be inverted before deconvolution if that is not the case. This plugin is much more
+Once the PSF is selected, the plugin will begin deconvolution. This plugin is much more
 memory-intensive and time-consuming than the Wiener filter, so it may be less ideal for
 massive data sets.
 
