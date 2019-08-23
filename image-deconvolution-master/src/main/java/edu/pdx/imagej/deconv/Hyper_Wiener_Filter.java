@@ -201,6 +201,8 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		else {
 			if (!save_files)
 				imgMat = new float[stack_list.length][slices][height][width];
+			
+			ampMat = new float[1][slices][height][width];
 			Wiener_Utils wu = new Wiener_Utils(width, height, slices, 1, 1/SNR);
 			for (int i = 0; i < stack_list.length; i++) {
 				ImagePlus tempImg = IJ.openImage(stack_path + stack_list[i]);

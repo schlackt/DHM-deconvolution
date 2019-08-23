@@ -8,6 +8,8 @@
 
 package edu.pdx.imagej.deconv;
 
+import java.io.File;
+
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
@@ -27,6 +29,15 @@ public class Regularization implements PlugInFilter {
 	private float norm = 255;
 	private String path;
 	private String choice;
+	private String stack_path;
+	private String save_path;
+	private File stacks;
+	private String[] stack_list;
+	private boolean normalizePSF;
+	private boolean do_inversion;
+	private boolean decon_hyper;
+	private boolean save_files;
+	private float[][][][] imgMat = new float[1][1][1][1];
 	
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
 
@@ -59,6 +70,10 @@ public class Regularization implements PlugInFilter {
 		gd.addNumericField("# Iterations: ", 3, 0);
 		gd.addNumericField("Lateral Spacing (o.u.): ", 0.178223, 3);
 		gd.addNumericField("Axial Spacing (o.u.): ", 10, 0);
+		gd.addCheckbox("Normalize PSF?", true);
+		gd.addCheckbox("Invert Images?", true);
+		gd.addCheckbox("Deconvolve from Hyperstack?", true);
+		gd.addCheckbox("Save by Frames?", false);
 
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -71,6 +86,10 @@ public class Regularization implements PlugInFilter {
 		iterations = (int) gd.getNextNumber();
 		lateral_spacing = (float) gd.getNextNumber();
 		axial_spacing = (float) gd.getNextNumber();
+		normalizePSF = gd.getNextBoolean();
+		do_inversion = gd.getNextBoolean();
+		decon_hyper = gd.getNextBoolean();
+		save_files = gd.getNextBoolean();
 		
 		if (choice == "8-bit")
 			choice = "GRAY8";
@@ -79,6 +98,26 @@ public class Regularization implements PlugInFilter {
 		else {
 			choice = "GRAY32";
 			norm = 1;
+		}
+		
+		// find the stack directory and get a list of the files in it
+		if (!decon_hyper) {
+			stack_path = diu.getDirectory("Please select the folder of stacks:");
+			stacks = new File(stack_path);
+			stack_list = stacks.list();
+			imgMat = new float[stack_list.length][1][1][1];
+		}
+		
+		// get desired save directory
+		if (save_files) {
+			save_path = diu.getDirectory("Select the save directory:");
+			save_path += "Deconvolved";
+			new File(save_path).mkdirs();
+
+			if (save_path.indexOf('\\') >= 0)
+				save_path += "\\";
+			else
+				save_path += "/";
 		}
 
 		return true;
@@ -93,51 +132,109 @@ public class Regularization implements PlugInFilter {
 		PSF = IJ.openImage(path);
 		
 		//invert PSF and image so signal takes high values instead of low values
-		diu.invert(PSF);
-		diu.invert(image);
-		
-		// convert image stacks to matrices
-		float[][][][] ampMat = diu.getMatrix4D(image);
-		for (int i = 0; i < ampMat.length; i++)
-			diu.linearShift(ampMat[i], 0, 1);
-		float[][][] psfMat = diu.getMatrix3D(PSF);
-		diu.normalize(psfMat);
-		
-		// initialize the regularization
-		IJ.showStatus("Initializing...");
-		Regularization_Utils ru = new Regularization_Utils(ampMat, psfMat, lateral_spacing, axial_spacing, smooth, nonlinearity);
-		// deconvolve according to the flow chart in Arigovindan+ 2013 (supplementary information)
-		for (int i = 0; i < iterations; i++) {
-			IJ.showStatus("Processing iteration " + Integer.toString(i+1) + " of " + Integer.toString(iterations) + "...");
-			
-			ru.get_dMat();
-			ru.get_uMat();
-			
-			ru.get_guessTilde();
-			ru.getEnergyMeasure(true);
-			float[] tildes = {ru.errorTilde, ru.errorTilde, ru.errorTilde, ru.errorTilde};
-			while (!ru.checkTilde()) {
-				IJ.showStatus("Tilde check #" + Integer.toString(tildeCount) + "...");
-				ru.damping = (float) (0.7 * ru.damping);
-				ru.get_guessTilde();
-				ru.getEnergyMeasure(true);
-				tildes[tildeCount % 4] = ru.errorTilde;
-				if (tildes[0] < tildes[1] && tildes[1] < tildes[2] && tildes[2] < tildes[3]) {
-					IJ.showMessage("Error seems to be diverging. Please try again with different parameters.");
-					return;
-				}
-				tildeCount += 1;
-			}
-			tildeCount = 1;
-			
-			ru.update();
+		if (do_inversion) {
+			diu.invert(PSF);
+			diu.invert(image);
 		}
 		
-		ru.getAmplitude(norm);
-		ImagePlus result = diu.reassign(ru.guess, choice, "Result");
-		diu.invert(result);
-		diu.invert(image);
-		result.show();
+		float[][][] psfMat = diu.getMatrix3D(PSF);
+		if (do_inversion)
+			diu.invert(PSF);
+		PSF.close();
+		
+		if (normalizePSF)
+			diu.normalize(psfMat);
+		
+		int decon_loops = 1;
+		float[][][][] ampMat = new float[1][1][1][1];
+		ImagePlus tempImg = IJ.createHyperStack("blank", 1, 1, 1, 1, 1, 32);
+		// convert image stacks to matrices
+		if (decon_hyper) {
+			ampMat = diu.getMatrix4D(image);
+			for (int i = 0; i < ampMat.length; i++)
+				diu.linearShift(ampMat[i], 0, 1);
+		}
+		else
+			decon_loops = stack_list.length;
+		
+		// initialize the regularization
+		for (int j = 0; j < decon_loops; j++) {
+			if (!decon_hyper) {
+				tempImg = IJ.openImage(stack_path + stack_list[j]);
+				if (do_inversion)
+					diu.invert(tempImg);
+				ampMat = diu.getMatrix4D(tempImg);
+				tempImg.close();
+			}
+			Regularization_Utils ru = new Regularization_Utils(ampMat, psfMat, lateral_spacing, axial_spacing, smooth, nonlinearity);
+			// deconvolve according to the flow chart in Arigovindan+ 2013 (supplementary information)
+			for (int i = 0; i < iterations; i++) {
+				IJ.showStatus("Processing iteration " + Integer.toString(i+1) + " of " + Integer.toString(iterations) + "...");
+			
+				ru.get_dMat();
+				ru.get_uMat();
+			
+				ru.get_guessTilde();
+				ru.getEnergyMeasure(true);
+				float[] tildes = {ru.errorTilde, ru.errorTilde, ru.errorTilde, ru.errorTilde};
+				while (!ru.checkTilde()) {
+					IJ.showStatus("Tilde check #" + Integer.toString(tildeCount) + "...");
+					ru.damping = (float) (0.7 * ru.damping);
+					ru.get_guessTilde();
+					ru.getEnergyMeasure(true);
+					tildes[tildeCount % 4] = ru.errorTilde;
+					if (tildes[0] < tildes[1] && tildes[1] < tildes[2] && tildes[2] < tildes[3]) {
+						IJ.showMessage("Error seems to be diverging. Please try again with different parameters.");
+						return;
+					}
+					tildeCount += 1;
+				}
+				tildeCount = 1;
+				
+				ru.update();
+			}
+			
+			ru.getAmplitude(norm);
+			
+			if (decon_hyper) {
+				if (!save_files) {
+					ImagePlus result = diu.reassign(ru.guess, choice, "Result");
+					if (do_inversion)
+						diu.invert(result);		
+				
+					result.show();
+				}
+				else
+					for (int i = 0; i < ru.guess.length; i++) {
+						ImagePlus result = diu.reassign(ru.guess[i], choice, Integer.toString(i));
+						if (do_inversion)
+							diu.invert(result);
+						IJ.saveAsTiff(result, save_path + Integer.toString(i) + ".tif");
+					}
+			}
+			else {
+				if (!save_files)
+					imgMat[j] = ru.guess[0];
+				else {
+					ImagePlus result = diu.reassign(ru.guess[0], choice, Integer.toString(j));
+					if (do_inversion)
+						diu.invert(result);
+					IJ.saveAsTiff(result, save_path + Integer.toString(j) + ".tif");
+				}
+			}
+		}
+		
+		if (!decon_hyper && !save_files) {
+			ImagePlus result = diu.reassign(imgMat, choice, "Result");
+			if (do_inversion) {
+				diu.invert(result);
+				diu.invert(image);
+			}
+			result.show();
+		}
+		
+		if (do_inversion)
+			diu.invert(image);
 	}
 	
 	public void showAbout() {
