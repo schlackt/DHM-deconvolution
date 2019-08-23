@@ -162,6 +162,9 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		
 		// convert image stacks to matrices
 		psfMat = diu.getMatrix3D(PSF);
+		if (do_inversion)
+			diu.invert(PSF);
+		PSF.close();
 		
 		if (normalizePSF)
 			diu.normalize(psfMat);
@@ -204,6 +207,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 				if (do_inversion)
 					diu.invert(tempImg);
 				ampMat = diu.getMatrix4D(tempImg);
+				tempImg.close();
 				
 				if (do_minimization)
 					wu.scale = bisect(wu, (float) (1 / 255 / height / width), 1, 1);

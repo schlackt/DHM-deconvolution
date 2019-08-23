@@ -45,7 +45,7 @@ at either the beginning of the filename (e.g. “00001_holo.tif”) or the end o
 5. Any prefixes or suffixes to the frame number (see examples above) must be uniform
 among *all* images.
 
-The plugin has 9 inputs:
+The plugin has 12 inputs:
 * **Axial Spacing (o.u.):** Space between z-planes as defined during reconstruction. This
 should be given in the original units (o.u.) used in reconstruction.
 * **Initial z (o.u.):** Desired starting slice for the 4D image, given in the image’s original
@@ -59,20 +59,25 @@ units.
 just the frame number.
   * **Prefix/Suffix:** Prefix or suffix of the filenames, if they have one.
 * **Output Image:** Dropbox to select the output image type (8-, 16-, or 32-bit).
+* **Save by Frames?:** If checked, the plugin will save each frame's stack separately. The
+stacks will be named by their frame number.
+  * **Save Directory** Prompt to select the directory in which to save the stacks. A new
+  folder named `Stacks` is created in this directory, and all stacks are saved in that folder.
 * **Image Directory:** Prompt to select the folder containing all z-plane folders.
 
-After all of the inputs are entered, the plugin will construct and show the corresponding
-hyperstack. If an image is not found, the plugin will show a message containing the z value
-and frame number of the missing image, along with the filepath that the program attempted
-to open. The plugin will then abort. This plugin retrieves the proper height and width from
-the currently open image.
+After all of the inputs are entered, the plugin will construct the corresponding
+hyperstack or save each frame's stack under the specified directory. If an image
+is not found, the plugin will show a message containing the z value and frame number
+of the missing image, along with the filepath that the program attempted to open. The
+plugin will then abort. This plugin retrieves the proper height and width from the
+currently open image.
 
 ## Wiener Filter
 
 This plugin implements the Wiener deconvolution method, which amounts to dividing
-out the PSF in Fourier space. The plugin assumes that the image to be deconvolved is
-currently open. This image can either be a 4D hyperstack (if deconvolving in time), or a
-single 3D image. There are 10 inputs:
+out the PSF in Fourier space. The plugin can either deconvolve the currently open image 
+or all images in a specified directory. The plugin will work with 4D hyperstacks and 3D stacks.
+There are 14 inputs:
 * **Output Image:** Dropbox to select the output image type (8-, 16-, or 32-bit).
 * **Invert Images?:** If checked, the plugin will invert the blurred image and PSF before
 deconvolving. The result and original image are both inverted again after deconvolution.
@@ -90,6 +95,15 @@ image by adjusting how the PSF is scaled. As currently designed, this feature wi
 local minima (not necessarily the absolute minimum).
 * **Display Error?:** If checked, the plugin will display the error of the deblurred image in a
 dialog box after deconvolution.
+* **Deconvolve from Hyperstack?** If checked, the plugin will deconvolve the currently opened image.
+If unchecked, the plugin will prompt the user for the directory where the image stacks are stored.
+	* **Stack Directory:** Prompt to select the folder in which the stacks to be deconvolved are stored.
+	This folder should *only* contain stacks.
+* **Save by Frame?** If checked, the plugin will prompt the user to select the directory in which to
+save deconvolved images. The images are stored as stacks and ordered by frame in a folder named `Deconvolved`.
+If unchecked, the plugin will open a hyperstack when deconvolution is complete.
+	* **Save Directory:** Prompt to select the directory in which to save deconvolved frames. A folder
+	named `Deconvolved` will be created in this directory, and deconvolved images will be placed there. 
 * **PSF:** Dialog to open the PSF image. This should be a 3D image with the same
 dimensions as the image to be deconvolved.
 
@@ -102,7 +116,7 @@ Once the PSF is selected, a dialog will appear asking the user to select a noisy
 the blurred image (if "Get Signal-to-Noise" was checked). This can be done by drawing a ROI
 of any shape around a noisy area and selecting “OK.” Then, a similar dialog will appear asking
 the user to draw another ROI around a region that contains a signal. The plugin will then carry
-out the deconvolution and open the deconvolved image.
+out the deconvolution and open the deconvolved image (if the user is not saving by frame).
 
 ## ER-Decon
 
