@@ -40,8 +40,8 @@ public class Make_Hyperstack implements PlugInFilter {
 	private String filetype;
 	private String prefixType;
 	private String divisor;
-	private String prefix;
-	private String suffix;
+	private String prefix = "";
+	private String suffix = "";
 	private String save_path;
 	private boolean save_frames;
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
@@ -76,9 +76,9 @@ public class Make_Hyperstack implements PlugInFilter {
 		String[] choices = {"8-bit", "16-bit", "32-bit"};
 		String[] prefixChoices = {"Default (e.g. \"00001.tif\")", "Prefix (e.g. \"xxx00001.tif\")", "Suffix (e.g. \"00001xxx.tif\")"};
 		GenericDialog gd = new GenericDialog("Deconvolution Setup");
-		gd.addNumericField("Axial Spacing (o.u.): ", 10, 0);
-		gd.addNumericField("Initial z (o.u.): ", 0, 0);
+		gd.addNumericField("Initial z (o.u.): ", -200, 0);
 		gd.addNumericField("Final z (o.u.): ", 200, 0);
+		gd.addNumericField("Axial Spacing (o.u.): ", 10, 0);
 		gd.addNumericField("Initial Frame: ", 1, 0);
 		gd.addNumericField("Final Frame: ", 10, 0);
 		gd.addStringField("Filetype: ", ".tif");
@@ -91,9 +91,9 @@ public class Make_Hyperstack implements PlugInFilter {
 			return false;
 
 		// get entered values
-		spacing = gd.getNextNumber();
 		z_start = gd.getNextNumber();
 		z_final = gd.getNextNumber();
+		spacing = gd.getNextNumber();
 		frame_start = (int) gd.getNextNumber();
 		frame_final = (int) gd.getNextNumber();
 		filetype = gd.getNextString();
