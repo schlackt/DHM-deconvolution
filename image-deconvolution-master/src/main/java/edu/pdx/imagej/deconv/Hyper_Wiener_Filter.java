@@ -144,6 +144,9 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			return;
 		}
 		PSF = IJ.openImage(path);
+		width = PSF.getProcessor().getWidth();
+		height = PSF.getProcessor().getHeight();
+		slices = PSF.getNSlices();
 		
 		if (do_inversion) {
 			diu.invert(image);
@@ -162,8 +165,6 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		
 		// convert image stacks to matrices
 		psfMat = diu.getMatrix3D(PSF);
-		if (do_inversion)
-			diu.invert(PSF);
 		PSF.close();
 		
 		if (normalizePSF)
@@ -239,8 +240,10 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			}
 		}
 		
-		if (do_inversion)
+		if (do_inversion) {
 			diu.invert(image);
+			diu.invert(PSF);
+		}
 	}
 	
 	private float bisect(Wiener_Utils wu, float scale_left, float scale_right, float tol) {
