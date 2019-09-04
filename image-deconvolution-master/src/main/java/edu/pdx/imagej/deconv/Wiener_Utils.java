@@ -2,6 +2,8 @@ package edu.pdx.imagej.deconv;
 
 import org.jtransforms.fft.FloatFFT_3D;
 
+import ij.IJ;
+
 public class Wiener_Utils {
 	
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
@@ -48,6 +50,7 @@ public class Wiener_Utils {
 			imgCopy[i] = diu.getAmplitudeMat(imgCopy[i]);
 			imgCopy[i] = diu.formatWienerAmp(imgCopy[i]);
 			diu.linearShift(imgCopy[i], 0, 1);
+			IJ.showProgress(i+1, frames);
 		}
 		fft3D.complexInverse(psfCopy, true);
 		psfCopy = diu.getAmplitudeMat(psfCopy);

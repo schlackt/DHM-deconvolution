@@ -174,13 +174,16 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			ampMat = diu.getMatrix4D(image);
 			Wiener_Utils wu = new Wiener_Utils(width, height, slices, frames, 1/SNR);
 		
-			if (do_minimization)
+			if (do_minimization) {
+				IJ.showStatus("Minimizing...");
 				wu.scale = bisect(wu, (float) (1 / 255 / height / width), 1, 1);
+			}
 		
 			wu.deconvolve(ampMat, psfMat, get_error);
 
 			// store results in a new ImagePlus image and display it
 			if (!save_files) {
+				IJ.showStatus("Constructing result...");
 				ImagePlus ampImage = diu.reassign(wu.imgCopy, choice, "Result");
 			
 				if (do_inversion)
@@ -191,6 +194,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 					IJ.showMessage("Error: " + Float.toString(wu.error) + "%");
 			}
 			else {
+				IJ.showStatus("Saving images...");
 				for (int i = 0; i < frames; i++) {
 					ImagePlus tempImg = diu.reassign(wu.imgCopy[i], choice, Integer.toString(i));
 					if (do_inversion)
@@ -206,6 +210,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			ampMat = new float[1][slices][height][width];
 			Wiener_Utils wu = new Wiener_Utils(width, height, slices, 1, 1/SNR);
 			for (int i = 0; i < stack_list.length; i++) {
+				IJ.showStatus("Processing frame " + Integer.toString(i + 1) + " of " + Integer.toString(stack_list.length) + "...");
 				ImagePlus tempImg = IJ.openImage(stack_path + stack_list[i]);
 				if (do_inversion)
 					diu.invert(tempImg);
