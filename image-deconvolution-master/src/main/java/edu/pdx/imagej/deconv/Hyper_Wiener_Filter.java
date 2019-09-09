@@ -187,6 +187,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			if (!save_files) {
 				IJ.showStatus("Constructing result...");
 				ImagePlus ampImage = diu.reassign(wu.imgCopy, choice, "Result");
+				ampImage.setCalibration(cal);
 			
 				if (do_inversion)
 					diu.invert(ampImage);
