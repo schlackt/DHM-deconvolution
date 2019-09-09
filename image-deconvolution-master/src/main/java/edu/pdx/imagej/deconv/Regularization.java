@@ -13,6 +13,7 @@ import java.io.File;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
+import ij.measure.Calibration;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
@@ -140,6 +141,7 @@ public class Regularization implements PlugInFilter {
 		float[][][] psfMat = diu.getMatrix3D(PSF);
 		if (do_inversion)
 			diu.invert(PSF);
+		Calibration cal = PSF.getCalibration();
 		PSF.close();
 		
 		if (normalizePSF)
@@ -199,6 +201,7 @@ public class Regularization implements PlugInFilter {
 			if (decon_hyper) {
 				if (!save_files) {
 					ImagePlus result = diu.reassign(ru.guess, choice, "Result");
+					result.setCalibration(cal);
 					if (do_inversion)
 						diu.invert(result);		
 				
@@ -207,6 +210,7 @@ public class Regularization implements PlugInFilter {
 				else
 					for (int i = 0; i < ru.guess.length; i++) {
 						ImagePlus result = diu.reassign(ru.guess[i], choice, Integer.toString(i));
+						result.setCalibration(cal);
 						if (do_inversion)
 							diu.invert(result);
 						IJ.saveAsTiff(result, save_path + Integer.toString(i) + ".tif");
@@ -217,6 +221,7 @@ public class Regularization implements PlugInFilter {
 					imgMat[j] = ru.guess[0];
 				else {
 					ImagePlus result = diu.reassign(ru.guess[0], choice, Integer.toString(j));
+					result.setCalibration(cal);
 					if (do_inversion)
 						diu.invert(result);
 					IJ.saveAsTiff(result, save_path + Integer.toString(j) + ".tif");
@@ -226,6 +231,7 @@ public class Regularization implements PlugInFilter {
 		
 		if (!decon_hyper && !save_files) {
 			ImagePlus result = diu.reassign(imgMat, choice, "Result");
+			result.setCalibration(cal);
 			if (do_inversion) {
 				diu.invert(result);
 				diu.invert(image);

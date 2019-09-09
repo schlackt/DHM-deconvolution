@@ -13,6 +13,7 @@ import java.io.File;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
+import ij.measure.Calibration;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
@@ -165,6 +166,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		
 		// convert image stacks to matrices
 		psfMat = diu.getMatrix3D(PSF);
+		Calibration cal = PSF.getCalibration();
 		PSF.close();
 		
 		if (normalizePSF)
@@ -197,6 +199,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 				IJ.showStatus("Saving images...");
 				for (int i = 0; i < frames; i++) {
 					ImagePlus tempImg = diu.reassign(wu.imgCopy[i], choice, Integer.toString(i));
+					tempImg.setCalibration(cal);
 					if (do_inversion)
 						diu.invert(tempImg);
 					IJ.saveAsTiff(tempImg, save_path + Integer.toString(i) + ".tif");
@@ -225,6 +228,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 					imgMat[i] = wu.imgCopy[0];
 				else {
 					tempImg = diu.reassign(wu.imgCopy[0], choice, Integer.toString(i));
+					tempImg.setCalibration(cal);
 					if (do_inversion)
 						diu.invert(tempImg);
 					IJ.saveAsTiff(tempImg, save_path + Integer.toString(i) + ".tif");
@@ -235,6 +239,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			
 			if (!save_files) {
 				ImagePlus ampImage = diu.reassign(imgMat, choice, "Result");
+				ampImage.setCalibration(cal);
 			
 				if (do_inversion)
 					diu.invert(ampImage);

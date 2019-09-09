@@ -477,6 +477,10 @@ public class Deconvolve_Image_Utils {
 		retMat = matrixOperations(mat1FT, mat2FT, "multiply");
 		fft.complexInverse(retMat, true);
 		
+		getAmplitudeMat(retMat);
+		formatWienerAmp(retMat);
+		toFFTform(retMat);
+		
 		return retMat;
 	}
 	
