@@ -208,6 +208,46 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
+	public float[][][] toFFTform(float[][][] amp, float[][][] phase) {
+		int a_slices = amp.length;
+		int a_height = amp[0].length;
+		int a_width = amp[0][0].length;
+		float[][][] ret = new float[a_slices][a_height][2 * a_width];
+		// loop over elements of amp and phase, add appropriate values to ret
+		for (int i = 0; i < a_slices; i++) {
+			for (int j = 0; j < a_height; j++) {
+				for (int k = 0; k < a_width; k++) {
+					// set the real part
+					ret[i][j][2 * k] = amp[i][j][k] * (float)Math.cos((double)phase[i][j][k]);
+					// set the imaginary part
+					ret[i][j][2 * k + 1] = amp[i][j][k] * (float)Math.sin((double)phase[i][j][k]);
+				}
+			}
+		}
+
+		return ret;
+	}
+	
+	public float[][][] toFFTformRect(float[][][] reMat, float[][][] imMat) {
+		int a_slices = reMat.length;
+		int a_height = reMat[0].length;
+		int a_width = reMat[0][0].length;
+		float[][][] ret = new float[a_slices][a_height][2 * a_width];
+		// loop over elements of amp and phase, add appropriate values to ret
+		for (int i = 0; i < a_slices; i++) {
+			for (int j = 0; j < a_height; j++) {
+				for (int k = 0; k < a_width; k++) {
+					// set the real part
+					ret[i][j][2 * k] = reMat[i][j][k];
+					// set the imaginary part
+					ret[i][j][2 * k + 1] = imMat[i][j][k];
+				}
+			}
+		}
+
+		return ret;
+	}
+	
 	// takes a "complex" matrix and squish it back to a simple amplitude matrix
 	public float[][][] getAmplitudeMat(float[][][] mat) {
 		int slices = mat.length;
@@ -220,6 +260,51 @@ public class Deconvolve_Image_Utils {
 				for (int k = 0; k < width; k++)
 					ret[i][j][k] = (float)Math.sqrt((double)mat[i][j][2*k] * (double)mat[i][j][2*k] + (double)mat[i][j][2*k + 1] * (double)mat[i][j][2*k + 1]); 
 		
+		return ret;
+	}
+	
+	// takes a "complex" matrix and squish it back to a phase matrix
+	public float[][][] getPhaseMat(float[][][] mat) {
+		int slices = mat.length;
+		int height = mat[0].length;
+		// the complex matrix has twice the width as the output matrix
+		int width = (int)(mat[0][0].length / 2);
+		float[][][] ret = new float[slices][height][width];
+		for (int i = 0; i < slices; i++)
+			for (int j = 0; j < height; j++)
+				for (int k = 0; k < width; k++)
+					ret[i][j][k] = (float)Math.atan2(mat[i][j][2*k + 1], mat[i][j][2*k]); 
+		
+		return ret;
+	}
+	
+	// takes a "complex" matrix and returns just the real parts
+	public float[][][] getReMat(float[][][] mat) {
+		int slices = mat.length;
+		int height = mat[0].length;
+		// the complex matrix has twice the width as the output matrix
+		int width = (int)(mat[0][0].length / 2);
+		float[][][] ret = new float[slices][height][width];
+		for (int i = 0; i < slices; i++)
+			for (int j = 0; j < height; j++)
+				for (int k = 0; k < width; k++)
+					ret[i][j][k] = mat[i][j][2*k]; 
+			
+		return ret;
+	}
+	
+	// takes a "complex" matrix and returns just the imaginary parts
+	public float[][][] getImMat(float[][][] mat) {
+		int slices = mat.length;
+		int height = mat[0].length;
+		// the complex matrix has twice the width as the output matrix
+		int width = (int)(mat[0][0].length / 2);
+		float[][][] ret = new float[slices][height][width];
+		for (int i = 0; i < slices; i++)
+			for (int j = 0; j < height; j++)
+				for (int k = 0; k < width; k++)
+					ret[i][j][k] = mat[i][j][2*k + 1]; 
+			
 		return ret;
 	}
 	
@@ -321,6 +406,24 @@ public class Deconvolve_Image_Utils {
 		return retMat;
 	}
 	
+	// scales a  matrix (can be real or complex)
+		public float[][][][] scaleMat(float[][][][] mat, float scale) {
+			int frames = mat.length;
+			int slices = mat[0].length;
+			int height = mat[0][0].length;
+			int width = mat[0][0][0].length;
+			float[][][][] retMat = new float[frames][slices][height][width];
+			
+			for (int i = 0; i < frames; i++)
+				for (int j = 0; j < slices; j++)
+					for (int k = 0; k < height; k++) 
+						for (int l = 0; l < width; l++)
+							retMat[i][j][k][l] = scale * mat[i][j][k][l];
+					
+			
+			return retMat;
+		}
+	
 	// covert 3D matrix to ImagePlus image
 		public ImagePlus reassign(float[][][] testMat, String impType, String title) {
 			int frames = 1;
@@ -331,10 +434,14 @@ public class Deconvolve_Image_Utils {
 			
 			if (impType == "GRAY32")
 				bitdepth = 32;
-			if (impType == "GRAY16")
+			if (impType == "GRAY16") {
 				bitdepth = 16;
-			if (impType == "GRAY8")
+				testMat = scaleMat(testMat, 255);
+			}
+			if (impType == "GRAY8") {
 				bitdepth = 8;
+				testMat = scaleMat(testMat, 255);
+			}
 			
 			ImagePlus testImage = IJ.createHyperStack("Result", width, height, 1, slices, frames, bitdepth);
 			ImageStack stack = testImage.getStack();
@@ -357,10 +464,14 @@ public class Deconvolve_Image_Utils {
 		
 		if (impType == "GRAY32")
 			bitdepth = 32;
-		if (impType == "GRAY16")
+		if (impType == "GRAY16") {
 			bitdepth = 16;
-		if (impType == "GRAY8")
+			testMat = scaleMat(testMat, 255);
+		}
+		if (impType == "GRAY8") {
 			bitdepth = 8;
+			testMat = scaleMat(testMat, 255);
+		}
 		
 		ImagePlus testImage = IJ.createHyperStack("Result", width, height, 1, slices, frames, bitdepth);
 		ImageStack stack = testImage.getStack();
@@ -416,6 +527,22 @@ public class Deconvolve_Image_Utils {
     				mat[i][j][k] = mat[i][j][k] / total;
     }
     
+ // normalize a real matrix so that all pixels add to 1
+    public void normalize(float[][][] matRe, float[][][] matIm) {
+    	float total = 0;
+    	for (int i = 0; i < matRe.length; i++)
+    		for (int j = 0; j < matRe[0].length; j++)
+    			for (int k = 0; k < matRe[0][0].length; k++)
+    				total += Math.sqrt(matRe[i][j][k]*matRe[i][j][k] + matIm[i][j][k]*matIm[i][j][k]);
+    	
+    	for (int i = 0; i < matRe.length; i++)
+    		for (int j = 0; j < matRe[0].length; j++)
+    			for (int k = 0; k < matRe[0][0].length; k++) {
+    				matRe[i][j][k] = matRe[i][j][k] / total;
+    				matIm[i][j][k] = matIm[i][j][k] / total;
+    			}
+    }
+    
     // after deconvolution, the quadrants of the image are flipped around for some reason. This puts it back to normal.
     public float[][][] formatWienerAmp(float[][][] ampMat) {
     	int slices = ampMat.length;
@@ -437,18 +564,18 @@ public class Deconvolve_Image_Utils {
     		}
     	
     	for (int i = 0; i < slices; i++) {
-    		for (int j = 0; j < height/2; j++)
-    			for (int k = 0; k < width/2; k++) {
+    		for (int j = 0; j <= height/2; j++)
+    			for (int k = 0; k <= width/2; k++) {
     				placehold = reformat[i][j][k];
     				reformat[i][j][k] = reformat[i][j+halfHeight-1][k+halfWidth-1];
     				reformat[i][j+halfHeight-1][k+halfWidth-1] = placehold;
     			}
     		
-    		for (int j = 0; j < height / 2; j++)
-    			for (int k = width/2; k < width; k++) {
+    		for (int j = 0; j <= height / 2 - 2; j++)
+    			for (int k = width/2 + 1; k < width; k++) {
     				placehold = reformat[i][j][k];
-    				reformat[i][j][k] = reformat[i][j+halfHeight-1][k-halfWidth+1];
-    				reformat[i][j+halfHeight-1][k-halfWidth+1] = placehold;
+    				reformat[i][j][k] = reformat[i][j+halfHeight+1][k-halfWidth-1];
+    				reformat[i][j+halfHeight+1][k-halfWidth-1] = placehold;
     			}
     	}
    
