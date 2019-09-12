@@ -208,6 +208,20 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
+	public float[][][][] toFFTform(float[][][][] mat) {
+		int a_frames = mat.length;
+		int a_slices = mat[0].length;
+		int a_height = mat[0][0].length;
+		int a_width = mat[0][0][0].length;
+		float[][][][] ret = new float[a_frames][a_slices][a_height][2 * a_width];
+
+		for (int i = 0; i < a_frames; i++) {
+			ret[i] = toFFTform(mat[i]);
+		}
+		
+		return ret;
+	}
+	
 	public float[][][] toFFTform(float[][][] amp, float[][][] phase) {
 		int a_slices = amp.length;
 		int a_height = amp[0].length;
@@ -225,6 +239,20 @@ public class Deconvolve_Image_Utils {
 			}
 		}
 
+		return ret;
+	}
+	
+	public float[][][][] toFFTform(float[][][][] amp, float[][][][] phase) {
+		int a_frames = amp.length;
+		int a_slices = amp[0].length;
+		int a_height = amp[0][0].length;
+		int a_width = amp[0][0][0].length;
+		float[][][][] ret = new float[a_frames][a_slices][a_height][2 * a_width];
+
+		for (int i = 0; i < a_frames; i++) {
+			ret[i] = toFFTform(amp[i], phase[i]);
+		}
+		
 		return ret;
 	}
 	
@@ -248,6 +276,20 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
+	public float[][][][] toFFTformRect(float[][][][] reMat, float[][][][] imMat) {
+		int a_frames = reMat.length;
+		int a_slices = reMat[0].length;
+		int a_height = reMat[0][0].length;
+		int a_width = reMat[0][0][0].length;
+		float[][][][] ret = new float[a_frames][a_slices][a_height][2 * a_width];
+
+		for (int i = 0; i < a_frames; i++) {
+			ret[i] = toFFTformRect(reMat[i], imMat[i]);
+		}
+		
+		return ret;
+	}
+	
 	// takes a "complex" matrix and squish it back to a simple amplitude matrix
 	public float[][][] getAmplitudeMat(float[][][] mat) {
 		int slices = mat.length;
@@ -259,6 +301,19 @@ public class Deconvolve_Image_Utils {
 			for (int j = 0; j < height; j++)
 				for (int k = 0; k < width; k++)
 					ret[i][j][k] = (float)Math.sqrt((double)mat[i][j][2*k] * (double)mat[i][j][2*k] + (double)mat[i][j][2*k + 1] * (double)mat[i][j][2*k + 1]); 
+		
+		return ret;
+	}
+	
+	public float[][][][] getAmplitudeMat(float[][][][] mat) {
+		int a_frames = mat.length;
+		int a_slices = mat[0].length;
+		int a_height = mat[0][0].length;
+		int a_width = mat[0][0][0].length / 2;
+		float[][][][] ret = new float[a_frames][a_slices][a_height][a_width];
+		
+		for (int i = 0; i < a_frames; i++)
+			ret[i] = getAmplitudeMat(mat[i]);
 		
 		return ret;
 	}
@@ -278,6 +333,19 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
+	public float[][][][] getPhaseMat(float[][][][] mat) {
+		int a_frames = mat.length;
+		int a_slices = mat[0].length;
+		int a_height = mat[0][0].length;
+		int a_width = mat[0][0][0].length / 2;
+		float[][][][] ret = new float[a_frames][a_slices][a_height][a_width];
+		
+		for (int i = 0; i < a_frames; i++)
+			ret[i] = getPhaseMat(mat[i]);
+		
+		return ret;
+	}
+	
 	// takes a "complex" matrix and returns just the real parts
 	public float[][][] getReMat(float[][][] mat) {
 		int slices = mat.length;
@@ -293,6 +361,19 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
+	public float[][][][] getReMat(float[][][][] mat) {
+		int a_frames = mat.length;
+		int a_slices = mat[0].length;
+		int a_height = mat[0][0].length;
+		int a_width = mat[0][0][0].length / 2;
+		float[][][][] ret = new float[a_frames][a_slices][a_height][a_width];
+		
+		for (int i = 0; i < a_frames; i++)
+			ret[i] = getReMat(mat[i]);
+		
+		return ret;
+	}
+	
 	// takes a "complex" matrix and returns just the imaginary parts
 	public float[][][] getImMat(float[][][] mat) {
 		int slices = mat.length;
@@ -305,6 +386,19 @@ public class Deconvolve_Image_Utils {
 				for (int k = 0; k < width; k++)
 					ret[i][j][k] = mat[i][j][2*k + 1]; 
 			
+		return ret;
+	}
+	
+	public float[][][][] getImMat(float[][][][] mat) {
+		int a_frames = mat.length;
+		int a_slices = mat[0].length;
+		int a_height = mat[0][0].length;
+		int a_width = mat[0][0][0].length / 2;
+		float[][][][] ret = new float[a_frames][a_slices][a_height][a_width];
+		
+		for (int i = 0; i < a_frames; i++)
+			ret[i] = getImMat(mat[i]);
+		
 		return ret;
 	}
 	
@@ -604,9 +698,12 @@ public class Deconvolve_Image_Utils {
 		retMat = matrixOperations(mat1FT, mat2FT, "multiply");
 		fft.complexInverse(retMat, true);
 		
-		retMat = getAmplitudeMat(retMat);
-		retMat = formatWienerAmp(retMat);
-		retMat = toFFTform(retMat);
+		float[][][] reMat = getReMat(retMat);
+		float[][][] imMat = getImMat(retMat);
+		reMat = formatWienerAmp(reMat);
+		imMat = formatWienerAmp(imMat);
+		
+		retMat = toFFTformRect(reMat, imMat);
 		
 		return retMat;
 	}
