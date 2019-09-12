@@ -62,6 +62,7 @@ public class Wiener_Utils {
 	
 	// treats complex numbers
 		public void deconvolve(float[][][][] imgAmpMat, float[][][][] imgPhaseMat, float[][][] psfAmpMat, float[][][] psfPhaseMat, boolean getError, String style) {
+			imgPhase = new float[frames][slices][height][width];
 			for (int i = 0; i < frames; i++) {
 				if (style == "Polar")
 					imgComplex[i] = diu.toFFTform(imgAmpMat[i], imgPhaseMat[i]);
@@ -98,8 +99,6 @@ public class Wiener_Utils {
 				diu.linearShift(imgComplex[i], 0, 1);
 				IJ.showProgress(i+1, frames);
 			}
-			fft3D.complexInverse(psfComplex, true);
-			psfComplex = diu.getAmplitudeMat(psfComplex);
 			
 			if (getError)
 				error = (float) diu.getError(imgComplex, imgAmpMat, psfComplex);

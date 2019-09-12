@@ -443,7 +443,7 @@ public class Deconvolve_Image_Utils {
 				testMat = scaleMat(testMat, 255);
 			}
 			
-			ImagePlus testImage = IJ.createHyperStack("Result", width, height, 1, slices, frames, bitdepth);
+			ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, bitdepth);
 			ImageStack stack = testImage.getStack();
 			
 			for (int j = 1; j <= slices; j++)
@@ -473,7 +473,7 @@ public class Deconvolve_Image_Utils {
 			testMat = scaleMat(testMat, 255);
 		}
 		
-		ImagePlus testImage = IJ.createHyperStack("Result", width, height, 1, slices, frames, bitdepth);
+		ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, bitdepth);
 		ImageStack stack = testImage.getStack();
 		
 		for (int i = 1; i <= frames; i++) 

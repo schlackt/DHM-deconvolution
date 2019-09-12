@@ -153,6 +153,16 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 				divisor= "/";
 			
 			save_path += divisor;
+			
+			if (decon_choice == "Complex (Polar)") {
+				new File(save_path + "Amplitude").mkdirs();
+				new File(save_path + "Phase").mkdirs();
+			}
+			
+			if (decon_choice == "Complex (Rectangular)") {
+				new File(save_path + "Real").mkdirs();
+				new File(save_path + "Imaginary").mkdirs();
+			}	
 		}
 		
 		if (choice == "8-bit")
@@ -198,13 +208,12 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			psfPhaseMat = diu.getMatrix3D(PSF);
 		}
 		
-		if (normalizePSF && decon_choice != "Complex (Rectangular)")
+		if (normalizePSF && decon_choice == "Complex (Polar)")
 			diu.normalize(psfMat);
 		
 		if (normalizePSF && decon_choice == "Complex (Rectangular)")
 			diu.normalize(psfMat, psfPhaseMat);
-		
-		
+			
 		if (decon_hyper) {
 			if (decon_choice != "Standard") {
 				path = diu.getPath("Select the imaginary or phase image:");
@@ -234,17 +243,11 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		if (decon_choice == "Standard")
 			wu.deconvolve(ampMat, psfMat, get_error);
 		
-		else if (decon_choice == "Complex (Polar)") {
-			new File(save_path + "Amplitude").mkdirs();
-			new File(save_path + "Phase").mkdirs();
+		else if (decon_choice == "Complex (Polar)")
 			wu.deconvolve(ampMat, phaseMat, psfMat, psfPhaseMat, get_error, "Polar");
-		}
 		
-		else {
-			new File(save_path + "Real").mkdirs();
-			new File(save_path + "Imaginary").mkdirs();
+		else
 			wu.deconvolve(ampMat, phaseMat, psfMat, psfPhaseMat, get_error, "Rectangular");
-		}
 		
 		IJ.showStatus("Saving images...");
 		for (int i = 0; i < frames; i++) {
