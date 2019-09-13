@@ -208,7 +208,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			psfPhaseMat = diu.getMatrix3D(PSF);
 		}
 		
-		if (normalizePSF && decon_choice == "Complex (Polar)")
+		if (normalizePSF && decon_choice != "Complex (Rectangular)")
 			diu.normalize(psfMat);
 		
 		if (normalizePSF && decon_choice == "Complex (Rectangular)")

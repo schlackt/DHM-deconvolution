@@ -85,7 +85,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		GenericDialog gd = new GenericDialog("Deconvolution Setup");
 		gd.addChoice("Output Image:", choices, "32-bit");
 		gd.addChoice("Deconvolution Style: ", decon_choices, "Standard");
-		gd.addNumericField("Iterations:", 5, 0);
+		gd.addNumericField("Iterations:", 3, 0);
 		gd.addCheckbox("Get SNR?", false);
 		gd.addCheckbox("Normalize PSF?", true);
 		gd.addCheckbox("Deconvolve from Hyperstack?", true);
@@ -209,7 +209,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			psfPhaseMat = diu.getMatrix3D(PSF);
 		}
 		
-		if (normalizePSF && decon_choice == "Complex (Polar)")
+		if (normalizePSF && decon_choice != "Complex (Rectangular)")
 			diu.normalize(psfMat);
 		
 		if (normalizePSF && decon_choice == "Complex (Rectangular)")
@@ -444,17 +444,42 @@ public class Deconvolve_Iterative implements PlugInFilter {
 
 	// standard iterative deconvolution. assumes image and psf are already in FFT form
 	public void deconvolve(float[][][][] image, float[][][] psf) {
+		int count = 1;
 		imgMat = new float[image.length][image[0].length][image[0][0].length][image[0][0][0].length];
 		float[][][][] blurredMat = new float[image.length][image[0].length][image[0][0].length][image[0][0][0].length];
 		imgMat = diu.scaleMat(image, 1);
-		for (int i = 0; i < iterations; i++)
+		for (int i = 0; i < iterations; i++) {
 			for (int j = 0; j < image.length; j++) {
 				blurredMat[j] = diu.fourierConvolve(imgMat[j], psf);
+				fitConvolution(blurredMat[j], image[j]);
 				
 				imgMat[j] = diu.matrixOperations(imgMat[j], image[j], "multiply");
 				imgMat[j] = diu.matrixOperations(imgMat[j], diu.complexConj(blurredMat[j]), "multiply");
 				imgMat[j] = diu.matrixOperations(imgMat[j], diu.incrementComplex(diu.matrixOperations(blurredMat[j], diu.complexConj(blurredMat[j]), "multiply"), 1/SNR), "divide");
+				
+				IJ.showProgress(count, iterations*frames);
+				count++;
 			}
+		}
+	}
+	
+	public void fitConvolution(float[][][] convolved, float[][][] original) {
+		float[][][] originalAmps = diu.getAmplitudeMat(original);
+		float[][][] convolvedAmpsOld = diu.getAmplitudeMat(convolved);
+		float[][][] convolvedAmpsNew = diu.getAmplitudeMat(convolved);
+		
+
+			float min = diu.minOf(originalAmps);
+			float max = diu.maxOf(originalAmps);
+			
+			diu.linearShift(convolvedAmpsNew, min, max);
+			for (int j = 0; j < slices; j++)
+				for (int k = 0; k < height; k++)
+					for (int l = 0; l < width; l++) {
+						convolved[j][k][2*l] = convolved[j][k][2*l] * convolvedAmpsNew[j][k][l] / convolvedAmpsOld[j][k][l];
+						convolved[j][k][2*l + 1] = convolved[j][k][2*l + 1] * convolvedAmpsNew[j][k][l] / convolvedAmpsOld[j][k][l];
+					}			
+		
 	}
 	
 	public void showAbout() {

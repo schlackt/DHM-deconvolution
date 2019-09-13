@@ -749,4 +749,26 @@ public class Deconvolve_Image_Utils {
 		}
 		return 100*Math.abs(ampError / (frames*slices*height*width - zeroCount));
 	}
+	
+	public float minOf(float[][][] mat) {
+		float ret = mat[0][0][0];
+		for (int i = 0; i < mat.length; i++)
+			for (int j = 0; j < mat[0].length; j++)
+				for (int k = 0; k < mat[0][0].length; k++) {
+					if (ret > mat[i][j][k])
+						ret = mat[i][j][k];
+				}
+		return ret;
+	}
+	
+	public float maxOf(float[][][] mat) {
+		float ret = mat[0][0][0];
+		for (int i = 0; i < mat.length; i++)
+			for (int j = 0; j < mat[0].length; j++)
+				for (int k = 0; k < mat[0][0].length; k++) {
+					if (ret < mat[i][j][k])
+						ret = mat[i][j][k];
+				}
+		return ret;
+	}
 }
