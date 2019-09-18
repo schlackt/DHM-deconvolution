@@ -44,6 +44,7 @@ public class Make_Hyperstack implements PlugInFilter {
 	private String suffix = "";
 	private String save_path;
 	private boolean save_frames;
+	private boolean split_stack;
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
 
 	@Override
@@ -85,6 +86,7 @@ public class Make_Hyperstack implements PlugInFilter {
 		gd.addChoice("Filename Type: ", prefixChoices, "Default (e.g. \"00001.tif\")");
 		gd.addChoice("Output Image:", choices, "32-bit");
 		gd.addCheckbox("Save by Frames?", false);
+		gd.addCheckbox("Deconstruct hyperstack?", false);
 
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -100,17 +102,19 @@ public class Make_Hyperstack implements PlugInFilter {
 		prefixType = gd.getNextChoice();
 		choice = gd.getNextChoice();
 		save_frames = gd.getNextBoolean();
+		split_stack = gd.getNextBoolean();
 		
 		// get the directory and determine if the file system uses '\' or '/'
-		directory = diu.getDirectory("Select the image directory:");
-		if (directory.indexOf('\\') >= 0)
-			divisor = "\\";
-		else
-			divisor = "/";
+		if (!split_stack)
+			directory = diu.getDirectory("Select the image directory:");
 		
 		// get the save directory if save_frames is true. Create a folder for the images.
 		if (save_frames) {
 			save_path = diu.getDirectory("Select the save directory:");
+			if (save_path.indexOf('\\') >= 0)
+				divisor = "\\";
+			else
+				divisor = "/";
 			save_path += "Stacks";
 			new File(save_path).mkdirs();
 			save_path += divisor;
@@ -156,55 +160,66 @@ public class Make_Hyperstack implements PlugInFilter {
 		if (choice == "GRAY8")
 			bitdepth = 8;
 		
-		slices = (int) ((z_final - z_start) / spacing) + 1;
-		frames = frame_final - frame_start + 1;
+		if (!split_stack) {
+			slices = (int) ((z_final - z_start) / spacing) + 1;
+			frames = frame_final - frame_start + 1;
 		
-		DecimalFormat zFormat = new DecimalFormat("###0.000");
-		DecimalFormat frameFormat = new DecimalFormat("00000");
-		ImagePlus hyperStack = IJ.createHyperStack("Blank", 1, 1, 1, 1, 1, bitdepth);
-		ImageStack hypStack = hyperStack.getStack();
-		if (!save_frames) {
-			hyperStack = IJ.createHyperStack("Result", width, height, 1, slices, frames, bitdepth);
-			hypStack = hyperStack.getStack();
-		}
-		ImagePlus tempImg;
-		ImageStack tempStack;
-		String path;
-		for (int j = frame_start; j <= frame_final; j++) {
-			if (save_frames) {
-				hyperStack = IJ.createHyperStack(frameFormat.format(j), width, height, 1, slices, 1, bitdepth);
+			DecimalFormat zFormat = new DecimalFormat("###0.000");
+			DecimalFormat frameFormat = new DecimalFormat("00000");
+			ImagePlus hyperStack = IJ.createHyperStack("Blank", 1, 1, 1, 1, 1, bitdepth);
+			ImageStack hypStack = hyperStack.getStack();
+			if (!save_frames) {
+				hyperStack = IJ.createHyperStack("Result", width, height, 1, slices, frames, bitdepth);
 				hypStack = hyperStack.getStack();
 			}
-			for (double i = z_start; i <= z_final; i += spacing) {				
-				if (directory.charAt(directory.length() - 1) == divisor.charAt(0))
-					path = directory + zFormat.format(i) + divisor + prefix + frameFormat.format(j) + suffix + filetype;
-				else
-					path = directory + divisor + zFormat.format(i) + divisor + prefix + frameFormat.format(j) + suffix + filetype;
-				try {
-					tempImg = IJ.openImage(path);
-					tempStack = tempImg.getStack();
-				
-					for (int k = 0; k < height; k++)
-						for (int l = 0; l < width; l++) {
-							if (!save_frames)
-								hypStack.setVoxel(l, k, hyperStack.getStackIndex(1, (int)((i-z_start)/spacing) + 1, j-frame_start + 1) - 1, (double)tempStack.getVoxel(l, k, 0));
-							else
-								hypStack.setVoxel(l, k, hyperStack.getStackIndex(1, (int)((i-z_start)/spacing) + 1, 1) - 1, (double)tempStack.getVoxel(l, k, 0));
-						}
-					tempImg.close();
+			ImagePlus tempImg;
+			ImageStack tempStack;
+			String path;
+			for (int j = frame_start; j <= frame_final; j++) {
+				if (save_frames) {
+					hyperStack = IJ.createHyperStack(frameFormat.format(j), width, height, 1, slices, 1, bitdepth);
+					hypStack = hyperStack.getStack();
 				}
-				catch (NullPointerException ex) {
-					IJ.showMessage("Missing image at z = " + zFormat.format(i) + ", frame " + frameFormat.format(j) + ". \nAttempted Directory: " + path);
-					return;
-				}
+				for (double i = z_start; i <= z_final; i += spacing) {				
+					if (directory.charAt(directory.length() - 1) == divisor.charAt(0))
+						path = directory + zFormat.format(i) + divisor + prefix + frameFormat.format(j) + suffix + filetype;
+					else
+						path = directory + divisor + zFormat.format(i) + divisor + prefix + frameFormat.format(j) + suffix + filetype;
+					try {
+						tempImg = IJ.openImage(path);
+						tempStack = tempImg.getStack();
 				
+						for (int k = 0; k < height; k++)
+							for (int l = 0; l < width; l++) {
+								if (!save_frames)
+									hypStack.setVoxel(l, k, hyperStack.getStackIndex(1, (int)((i-z_start)/spacing) + 1, j-frame_start + 1) - 1, (double)tempStack.getVoxel(l, k, 0));
+								else
+									hypStack.setVoxel(l, k, hyperStack.getStackIndex(1, (int)((i-z_start)/spacing) + 1, 1) - 1, (double)tempStack.getVoxel(l, k, 0));
+							}
+						tempImg.close();
+					}
+					catch (NullPointerException ex) {
+						IJ.showMessage("Missing image at z = " + zFormat.format(i) + ", frame " + frameFormat.format(j) + ". \nAttempted Directory: " + path);
+						return;
+					}
+				
+				}
+				IJ.saveAsTiff(hyperStack, save_path + frameFormat.format(j) + ".tif");
+				IJ.showStatus("Processing frame" + frameFormat.format(j) + "...");
+				IJ.showProgress(j+1, (int)(frame_final - frame_start));
 			}
-			IJ.saveAsTiff(hyperStack, save_path + frameFormat.format(j) + ".tif");
-			IJ.showStatus("Processing frame" + frameFormat.format(j) + "...");
-			IJ.showProgress(j+1, (int)(frame_final - frame_start));
+			if (!save_frames)
+				hyperStack.show();
 		}
-		if (!save_frames)
-			hyperStack.show();
+		if (split_stack && save_frames) {
+			float[][][][] imageMat = diu.getMatrix4D(image);
+			image.close();
+			for (int i = 0; i < frames; i++) {
+				IJ.showProgress(i, frames);
+				ImagePlus tempImg = diu.reassign(imageMat[i], choice, Integer.toString(i));
+				IJ.saveAsTiff(tempImg, save_path + Integer.toString(i) + ".tif");
+			}
+		}
 	}
 	
 	public void showAbout() {
