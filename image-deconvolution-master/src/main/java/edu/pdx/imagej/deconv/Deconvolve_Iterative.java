@@ -13,6 +13,7 @@ import java.io.File;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
+import ij.gui.Plot;
 import ij.measure.Calibration;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
@@ -42,6 +43,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 	private boolean normalizePSF;
 	private boolean decon_hyper;
 	private boolean save_files;
+	private boolean plot_error;
 	private float SNR;
 	private float[][][][] ampMat;
 	private float[][][][] phaseMat;
@@ -50,6 +52,8 @@ public class Deconvolve_Iterative implements PlugInFilter {
 	private float[][][][] objMat;
 	private float[][][] psfMat;
 	private float[][][] psfPhaseMat;
+	private float[] errors;
+	private Plot errorPlot;
 	
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
 
@@ -90,6 +94,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		gd.addCheckbox("Normalize PSF?", true);
 		gd.addCheckbox("Deconvolve from Hyperstack?", true);
 		gd.addCheckbox("Save by Frame?", false);
+		gd.addCheckbox("Plot Errors?", false);
 
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -103,6 +108,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		normalizePSF = gd.getNextBoolean();
 		decon_hyper = gd.getNextBoolean();
 		save_files = gd.getNextBoolean();
+		plot_error = gd.getNextBoolean();
 		
 		if (!getSNR) {
 			GenericDialog gd2 = new GenericDialog("Custom Beta");
@@ -128,7 +134,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			stack_list = stacks.list();
 			
 			stack_path_phase = diu.getDirectory("Please select the folder of phase stacks:");
-			stacks = new File(stack_path);
+			stacks = new File(stack_path_phase);
 			stack_list_phase = stacks.list();
 		}
 		
@@ -138,7 +144,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			stack_list = stacks.list();
 			
 			stack_path_phase = diu.getDirectory("Please select the folder of imaginary stacks:");
-			stacks = new File(stack_path);
+			stacks = new File(stack_path_phase);
 			stack_list_phase = stacks.list();
 		}
 		
@@ -154,6 +160,9 @@ public class Deconvolve_Iterative implements PlugInFilter {
 				divisor= "/";
 			
 			save_path += divisor;
+			
+			if (plot_error)
+				new File(save_path + "Error").mkdirs();
 			
 			if (decon_choice == "Complex (Polar)") {
 				new File(save_path + "Amplitude").mkdirs();
@@ -173,6 +182,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		else {
 			choice = "GRAY32";
 		}
+		errors = new float[iterations];
 
 		return true;
 	}
@@ -271,7 +281,13 @@ public class Deconvolve_Iterative implements PlugInFilter {
 				tempImg = diu.reassign(diu.getImMat(imgMat[i]), choice, Integer.toString(i));
 				tempImg.setCalibration(cal);
 				IJ.saveAsTiff(tempImg, save_path + "Imaginary" + divisor + Integer.toString(i) + ".tif");
-			}				
+			}
+			
+			if (plot_error) {
+				errorPlot = plotError();
+				tempImg = errorPlot.getImagePlus();
+				IJ.saveAsTiff(tempImg, save_path + "Error" + divisor + Integer.toString(i) + ".tif");
+			}
 		}
 	}
 	
@@ -328,8 +344,12 @@ public class Deconvolve_Iterative implements PlugInFilter {
 				IJ.saveAsTiff(tempImg, save_path + "Imaginary" + divisor + Integer.toString(i) + ".tif");
 				tempImg.close();
 			}
-		
-				
+			
+			if (plot_error) {
+				errorPlot = plotError();
+				tempImg = errorPlot.getImagePlus();
+				IJ.saveAsTiff(tempImg, save_path + "Error" + divisor + Integer.toString(i) + ".tif");
+			}	
 		}
 	}
 	
@@ -371,7 +391,12 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			ImagePlus imImage = diu.reassign(diu.getImMat(imgMat), choice, "Imaginary");
 			imImage.setCalibration(cal);
 			imImage.show();
-		}	
+		}
+		
+		if (plot_error) {
+			errorPlot = plotError();
+			errorPlot.show();
+		}
 	}
 	
 	public void show_from_files() {
@@ -440,26 +465,33 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			imImage.setCalibration(cal);
 			imImage.show();
 		}
+		
+		if (plot_error) {
+			errorPlot = plotError();
+			errorPlot.show();
+		}
 	}
 
 	// standard iterative deconvolution. assumes image and psf are already in FFT form
 	public void deconvolve(float[][][][] image, float[][][] psf) {
-		int count = 1;
+		int count = 0;
 		imgMat = new float[image.length][image[0].length][image[0][0].length][image[0][0][0].length];
 		float[][][][] blurredMat = new float[image.length][image[0].length][image[0][0].length][image[0][0][0].length];
 		imgMat = diu.scaleMat(image, 1);
 		for (int i = 0; i < iterations; i++) {
 			for (int j = 0; j < image.length; j++) {
+				IJ.showProgress(count, iterations*frames);
+				count++;
+				
 				blurredMat[j] = diu.fourierConvolve(imgMat[j], psf);
 				fitConvolution(blurredMat[j], image[j]);
 				
 				imgMat[j] = diu.matrixOperations(imgMat[j], image[j], "multiply");
 				imgMat[j] = diu.matrixOperations(imgMat[j], diu.complexConj(blurredMat[j]), "multiply");
 				imgMat[j] = diu.matrixOperations(imgMat[j], diu.incrementComplex(diu.matrixOperations(blurredMat[j], diu.complexConj(blurredMat[j]), "multiply"), 1/SNR), "divide");
-				
-				IJ.showProgress(count, iterations*frames);
-				count++;
 			}
+			if (plot_error)
+				errors[i] = getError(diu.getAmplitudeMat(blurredMat), diu.getAmplitudeMat(image));
 		}
 	}
 	
@@ -480,6 +512,33 @@ public class Deconvolve_Iterative implements PlugInFilter {
 						convolved[j][k][2*l + 1] = convolved[j][k][2*l + 1] * convolvedAmpsNew[j][k][l] / convolvedAmpsOld[j][k][l];
 					}			
 		
+	}
+	
+	private Plot plotError() {
+		Plot plot = new Plot("Error Plot", "Iteration", "Error");
+		float[] xs = new float[iterations];
+		for (int i = 0; i < iterations; i++) {
+			xs[i] = i + 1;
+		}
+		
+		plot.addPoints(xs, errors, Plot.CIRCLE);
+		plot.addPoints(xs, errors, Plot.LINE);
+		
+		return plot;
+	}
+	
+	private float getError(float[][][][] guess, float[][][][] original) {
+		float originalTotal = 0;
+		float difference = 0;
+		for (int i = 0; i < frames; i++)
+			for (int j = 0; j < slices; j ++)
+				for (int k = 0; k < height; k++)
+					for (int l = 0; l < width; l++) {
+						originalTotal += original[i][j][k][l];
+						difference += Math.abs(Math.abs(guess[i][j][k][l]) - Math.abs(original[i][j][k][l]));
+					}
+		
+		return difference / originalTotal;
 	}
 	
 	public void showAbout() {
