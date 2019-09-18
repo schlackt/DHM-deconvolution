@@ -127,7 +127,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			stack_list = stacks.list();
 			
 			stack_path_phase = diu.getDirectory("Please select the folder of phase stacks:");
-			stacks = new File(stack_path);
+			stacks = new File(stack_path_phase);
 			stack_list_phase = stacks.list();
 		}
 		
@@ -137,7 +137,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			stack_list = stacks.list();
 			
 			stack_path_phase = diu.getDirectory("Please select the folder of imaginary stacks:");
-			stacks = new File(stack_path);
+			stacks = new File(stack_path_phase);
 			stack_list_phase = stacks.list();
 		}
 		
