@@ -528,14 +528,10 @@ public class Deconvolve_Image_Utils {
 			
 			if (impType == "GRAY32")
 				bitdepth = 32;
-			if (impType == "GRAY16") {
+			if (impType == "GRAY16")
 				bitdepth = 16;
-				testMat = scaleMat(testMat, 255);
-			}
-			if (impType == "GRAY8") {
+			if (impType == "GRAY8") 
 				bitdepth = 8;
-				testMat = scaleMat(testMat, 255);
-			}
 			
 			ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, bitdepth);
 			ImageStack stack = testImage.getStack();
@@ -558,14 +554,10 @@ public class Deconvolve_Image_Utils {
 		
 		if (impType == "GRAY32")
 			bitdepth = 32;
-		if (impType == "GRAY16") {
+		if (impType == "GRAY16") 
 			bitdepth = 16;
-			testMat = scaleMat(testMat, 255);
-		}
-		if (impType == "GRAY8") {
+		if (impType == "GRAY8")
 			bitdepth = 8;
-			testMat = scaleMat(testMat, 255);
-		}
 		
 		ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, bitdepth);
 		ImageStack stack = testImage.getStack();
