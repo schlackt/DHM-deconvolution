@@ -57,20 +57,20 @@ public class Make_PSF implements PlugInFilter {
 	public void process(ImageProcessor ip) {
 		float[][][] pointImageMat = new float[1][height][width];
 		boolean expVals = false;
-		int pointWidth = 1;
-		int pointHeight = 1;
+		int pointRad = 1;
+		int centerX = (width / 2) - 1;
+		int centerY = (height / 2) - 1;
 		GenericDialog gd = new GenericDialog("PSF Setup");
-		gd.addNumericField("Point height (px): ", 1, 0);
-		gd.addNumericField("Point width (px): ", 1, 0);
+		gd.addNumericField("Point radius (px): ", 1, 0);
 		gd.addCheckbox("Use experimental values?", expVals);
 		gd.showDialog();
+		
+		pointRad = (int)gd.getNextNumber();
 		expVals = gd.getNextBoolean();
-		pointHeight = (int)gd.getNextNumber();
-		pointWidth = (int)gd.getNextNumber();
 		
 		for (int i = 0; i < height; i++)
 			for (int j = 0; j < width; j++) {
-				if (i >= (int)((height - (pointHeight - 1)) / 2) && i <= (int)((height + (pointHeight - 1)) / 2) && j >= (int)((width - (pointWidth - 1)) / 2) && j <= (int)((width + (pointWidth - 1)) / 2))
+				if (Math.pow(i - centerY, 2) + Math.pow(j - centerX, 2) <= pointRad*pointRad)
 					if (expVals)
 						pointImageMat[0][i][j] = min;
 					else
