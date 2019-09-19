@@ -112,7 +112,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		
 		if (!getSNR) {
 			GenericDialog gd2 = new GenericDialog("Custom Beta");
-			gd2.addNumericField("Beta:", 0.001, 3);
+			gd2.addNumericField("Beta:", 0.01, 2);
 			
 			gd2.showDialog();
 			if (gd2.wasCanceled())
@@ -484,7 +484,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 				count++;
 				
 				blurredMat[j] = diu.fourierConvolve(imgMat[j], psf);
-				fitConvolution(blurredMat[j], image[j]);
+				diu.fitConvolution(blurredMat[j], image[j]);
 				
 				imgMat[j] = diu.matrixOperations(imgMat[j], image[j], "multiply");
 				imgMat[j] = diu.matrixOperations(imgMat[j], diu.complexConj(blurredMat[j]), "multiply");
@@ -493,25 +493,6 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			if (plot_error)
 				errors[i] = getError(diu.getAmplitudeMat(blurredMat), diu.getAmplitudeMat(image));
 		}
-	}
-	
-	public void fitConvolution(float[][][] convolved, float[][][] original) {
-		float[][][] originalAmps = diu.getAmplitudeMat(original);
-		float[][][] convolvedAmpsOld = diu.getAmplitudeMat(convolved);
-		float[][][] convolvedAmpsNew = diu.getAmplitudeMat(convolved);
-		
-
-			float min = diu.minOf(originalAmps);
-			float max = diu.maxOf(originalAmps);
-			
-			diu.linearShift(convolvedAmpsNew, min, max);
-			for (int j = 0; j < slices; j++)
-				for (int k = 0; k < height; k++)
-					for (int l = 0; l < width; l++) {
-						convolved[j][k][2*l] = convolved[j][k][2*l] * convolvedAmpsNew[j][k][l] / convolvedAmpsOld[j][k][l];
-						convolved[j][k][2*l + 1] = convolved[j][k][2*l + 1] * convolvedAmpsNew[j][k][l] / convolvedAmpsOld[j][k][l];
-					}			
-		
 	}
 	
 	private Plot plotError() {
@@ -534,7 +515,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			for (int j = 0; j < slices; j ++)
 				for (int k = 0; k < height; k++)
 					for (int l = 0; l < width; l++) {
-						originalTotal += original[i][j][k][l];
+						originalTotal += Math.abs(original[i][j][k][l]);
 						difference += Math.abs(Math.abs(guess[i][j][k][l]) - Math.abs(original[i][j][k][l]));
 					}
 		

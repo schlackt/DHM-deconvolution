@@ -65,9 +65,9 @@ public class Get_Error implements PlugInFilter {
 		float[][][][] imgMatOld = diu.getMatrix4D(origImage);
 		float[][][] psfMat = diu.getMatrix3D(PSF);
 		
-		double err = diu.getError(imgMat, imgMatOld, psfMat);
+		double err = diu.getError(diu.toFFTform(imgMat), diu.toFFTform(imgMatOld), diu.toFFTform(psfMat));
 		DecimalFormat errFormat = new DecimalFormat("###0.00");
-		IJ.showMessage("Error: " + errFormat.format(err) + "%");
+		IJ.showMessage("Error: " + errFormat.format(err * 100) + "%");
 		diu.invert(image);
 	}
 	

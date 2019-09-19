@@ -325,9 +325,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 				tempImg.setCalibration(cal);
 				IJ.saveAsTiff(tempImg, save_path + "Imaginary" + divisor + Integer.toString(i) + ".tif");
 				tempImg.close();
-			}
-		
-				
+			}		
 		}
 	}
 	
@@ -344,8 +342,6 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			tempImage.setCalibration(cal);
 		
 			tempImage.show();
-			if (get_error)
-				IJ.showMessage("Error: " + Float.toString(wu.error) + "%");
 		}
 		
 		else if (decon_choice == "Complex (Polar)") {
@@ -373,6 +369,9 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			imImage.setCalibration(cal);
 			imImage.show();
 		}	
+		
+		if (get_error)
+			IJ.showMessage("Error: " + Float.toString(wu.error * 100) + "%");
 	}
 	
 	public void show_from_files() {
@@ -424,8 +423,6 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			tempImage.setCalibration(cal);
 
 			tempImage.show();
-			if (get_error)
-				IJ.showMessage("Error: " + Float.toString(wu.error) + "%");
 		}
 		else if (decon_choice == "Complex (Polar)") {
 			ImagePlus amp = diu.reassign(imgMat, choice, "Amplitude");
@@ -445,6 +442,9 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			imImage.setCalibration(cal);
 			imImage.show();
 		}
+		
+		if (get_error)
+			IJ.showMessage("Error: " + Float.toString(wu.error * 100) + "%");
 	}
 
 	

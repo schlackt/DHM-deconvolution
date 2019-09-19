@@ -57,7 +57,7 @@ public class Wiener_Utils {
 		psfComplex = diu.getAmplitudeMat(psfComplex);
 		
 		if (getError)
-			error = (float) diu.getError(imgComplex, imgMat, psfComplex);
+			error = (float) diu.getError(diu.toFFTform(imgComplex), diu.toFFTform(imgMat), psfMat);
 	}
 	
 	// treats complex numbers
@@ -101,6 +101,9 @@ public class Wiener_Utils {
 			}
 			
 			if (getError)
-				error = (float) diu.getError(imgComplex, imgAmpMat, psfComplex);
+				if (style == "Polar")
+					error = (float) diu.getError(diu.toFFTform(imgComplex, imgPhase), diu.toFFTform(imgAmpMat, imgPhaseMat), diu.toFFTform(psfAmpMat, psfPhaseMat));
+				else
+					error = (float) diu.getError(diu.toFFTformRect(imgComplex, imgPhase), diu.toFFTformRect(imgAmpMat, imgPhaseMat), diu.toFFTformRect(psfAmpMat, psfPhaseMat));
 		}
 }

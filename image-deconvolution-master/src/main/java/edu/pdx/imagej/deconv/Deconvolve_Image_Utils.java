@@ -700,46 +700,51 @@ public class Deconvolve_Image_Utils {
 		return retMat;
 	}
 	
-	public double getError(float[][][][] ampApprox, float[][][][] amp, float[][][] psfMat) {
-		int frames = amp.length;
-		int slices = amp[0].length;
-		int height = amp[0][0].length;
-		int width = amp[0][0][0].length;
-		float[][][][] blurredCopy = new float[frames][slices][height][width];
-		float[][][][] originalCopy = new float[frames][slices][height][width];
-		float[][][] psfCopy = new float[slices][height][width];
+	public void fitConvolution(float[][][] convolved, float[][][] original) {
+		int slices = convolved.length;
+		int height = convolved[0].length;
+		int width = convolved[0][0].length;
+		float[][][] originalAmps = getAmplitudeMat(original);
+		float[][][] convolvedAmpsOld = getAmplitudeMat(convolved);
+		float[][][] convolvedAmpsNew = getAmplitudeMat(convolved);
 		
-		for (int i = 0; i < frames; i++)
+
+			float min = minOf(originalAmps);
+			float max = maxOf(originalAmps);
+			
+			linearShift(convolvedAmpsNew, min, max);
 			for (int j = 0; j < slices; j++)
 				for (int k = 0; k < height; k++)
 					for (int l = 0; l < width; l++) {
-						blurredCopy[i][j][k][l] = ampApprox[i][j][k][l];
-						originalCopy[i][j][k][l] = amp[i][j][k][l]; 
+						convolved[j][k][2*l] = convolved[j][k][2*l] * convolvedAmpsNew[j][k][l] / convolvedAmpsOld[j][k][l];
+						convolved[j][k][2*l + 1] = convolved[j][k][2*l + 1] * convolvedAmpsNew[j][k][l] / convolvedAmpsOld[j][k][l];
+					}			
+		
+	}
+	
+	public double getError(float[][][][] guess, float[][][][] image, float[][][] psfMat) {
+		int frames = image.length;
+		int slices = image[0].length;
+		int height = image[0][0].length;
+		int width = image[0][0][0].length / 2;
+		float[][][][] blurredMat = new float[frames][slices][height][2*width];
+		
+		for (int i = 0; i < frames; i++) {
+			blurredMat[i] = fourierConvolve(guess[i], psfMat);
+			fitConvolution(blurredMat[i], image[i]);
+		}
+		
+		float originalTotal = 0;
+		float difference = 0;
+		for (int i = 0; i < frames; i++)
+			for (int j = 0; j < slices; j ++)
+				for (int k = 0; k < height; k++)
+					for (int l = 0; l < width; l++) {
+						originalTotal += Math.abs(image[i][j][k][l]);
+						difference += Math.abs(Math.abs(guess[i][j][k][l]) - Math.abs(image[i][j][k][l]));
 					}
 		
-		for (int j = 0; j < slices; j++)
-			for (int k = 0; k < height; k++)
-				for (int l = 0; l < width; l++) 
-					psfCopy[j][k][l] = psfMat[j][k][l];
-		
-		int zeroCount = 0;
-		double ampError = 0;
-		float[][][] ampConv;
-		for (int l = 0; l < frames; l++) {
-			linearShift(blurredCopy[l], 0, 1);
-			linearShift(originalCopy[l], 0, 1);
-			ampConv = getAmplitudeMat(fourierConvolve(toFFTform(blurredCopy[l]), toFFTform(psfCopy)));
-			linearShift(ampConv, 0, 1);
-			for (int i = 0; i < slices; i++)
-				for (int j = 0; j < height; j++)
-					for (int k = 0; k < width; k++) {
-						if (originalCopy[l][i][j][k] != 0)
-							ampError += Math.abs((ampConv[i][j][k] - originalCopy[l][i][j][k]) / originalCopy[l][i][j][k]);
-						else
-							zeroCount += 1;
-				}
-		}
-		return 100*Math.abs(ampError / (frames*slices*height*width - zeroCount));
+		return difference / originalTotal;
 	}
 	
 	public float minOf(float[][][] mat) {
