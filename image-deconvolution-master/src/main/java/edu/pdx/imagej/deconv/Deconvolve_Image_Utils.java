@@ -703,7 +703,7 @@ public class Deconvolve_Image_Utils {
 	public void fitConvolution(float[][][] convolved, float[][][] original) {
 		int slices = convolved.length;
 		int height = convolved[0].length;
-		int width = convolved[0][0].length;
+		int width = convolved[0][0].length / 2;
 		float[][][] originalAmps = getAmplitudeMat(original);
 		float[][][] convolvedAmpsOld = getAmplitudeMat(convolved);
 		float[][][] convolvedAmpsNew = getAmplitudeMat(convolved);
