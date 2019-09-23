@@ -741,7 +741,7 @@ public class Deconvolve_Image_Utils {
 				for (int k = 0; k < height; k++)
 					for (int l = 0; l < width; l++) {
 						originalTotal += Math.abs(image[i][j][k][l]);
-						difference += Math.abs(Math.abs(guess[i][j][k][l]) - Math.abs(image[i][j][k][l]));
+						difference += Math.abs(Math.abs(blurredMat[i][j][k][l]) - Math.abs(image[i][j][k][l]));
 					}
 		
 		return difference / originalTotal;
