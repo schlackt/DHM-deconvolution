@@ -110,6 +110,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		save_files = gd.getNextBoolean();
 		plot_error = gd.getNextBoolean();
 		
+		// show dialog to obtain custom value of beta
 		if (!getSNR) {
 			GenericDialog gd2 = new GenericDialog("Custom Beta");
 			gd2.addNumericField("Beta:", 0.01, 2);
@@ -154,6 +155,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			save_path += "Deconvolved";
 			new File(save_path).mkdirs();
 
+			// determine whether system uses '/' or '\'
 			if (save_path.indexOf('\\') >= 0) 
 				divisor = "\\";
 			else
@@ -161,14 +163,15 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			
 			save_path += divisor;
 			
+			// make a folder for error plots if desired
 			if (plot_error)
 				new File(save_path + "Error").mkdirs();
 			
+			// create appropriate folders for deconvolved images
 			if (decon_choice == "Complex (Polar)") {
 				new File(save_path + "Amplitude").mkdirs();
 				new File(save_path + "Phase").mkdirs();
 			}
-			
 			if (decon_choice == "Complex (Rectangular)") {
 				new File(save_path + "Real").mkdirs();
 				new File(save_path + "Imaginary").mkdirs();
@@ -179,9 +182,9 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			choice = "GRAY8";
 		else if (choice == "16-bit")
 			choice = "GRAY16";
-		else {
+		else
 			choice = "GRAY32";
-		}
+		
 		errors = new float[iterations];
 
 		return true;
@@ -213,19 +216,22 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		cal = PSF.getCalibration();
 		PSF.close();
 		
+		// get imaginary/phase component of the PSF
 		if (decon_choice != "Standard") {
 			path = diu.getPath("Select the PSF imaginary or phase image:");
 			PSF = IJ.openImage(path);
 			psfPhaseMat = diu.getMatrix3D(PSF);
 		}
 		
+		// normalize PSF appropriately
 		if (normalizePSF && decon_choice != "Complex (Rectangular)")
 			diu.normalize(psfMat);
-		
 		if (normalizePSF && decon_choice == "Complex (Rectangular)")
 			diu.normalize(psfMat, psfPhaseMat);
 			
+		// select proper deconvolution procedure
 		if (decon_hyper) {
+			// get imaginary/phase component of the original image
 			if (decon_choice != "Standard") {
 				path = diu.getPath("Select the imaginary or phase image:");
 				ImagePlus temp = IJ.openImage(path);
@@ -242,23 +248,23 @@ public class Deconvolve_Iterative implements PlugInFilter {
 				save_from_files();
 			else
 				show_from_files();
-		}
-		
+		}	
 	}
 	
+	// save deconvolved images by frame from a hyperstack
 	public void save_from_hyperstack() {
 		ampMat = diu.getMatrix4D(image);
 		IJ.showStatus("Deconvolving hyperstack...");
 		
+		// deconvolve using the appropriate FFT form
 		if (decon_choice == "Standard")
 			deconvolve(diu.toFFTform(ampMat), diu.toFFTform(psfMat));
-		
 		else if (decon_choice == "Complex (Polar)") 	
 			deconvolve(diu.toFFTform(ampMat, phaseMat), diu.toFFTform(psfMat, psfPhaseMat));
-		
 		else		
 			deconvolve(diu.toFFTformRect(ampMat, phaseMat), diu.toFFTform(psfMat, psfPhaseMat));
 		
+		// save images by frame
 		IJ.showStatus("Saving images...");
 		for (int i = 0; i < frames; i++) {
 			ImagePlus tempImg = diu.reassign(diu.getAmplitudeMat(imgMat[i]), choice, Integer.toString(i));
@@ -483,6 +489,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 				IJ.showProgress(count, iterations*frames);
 				count++;
 				
+				// perform deconvolution operations
 				blurredMat[j] = diu.fourierConvolve(imgMat[j], psf);
 				diu.fitConvolution(blurredMat[j], image[j]);
 				
@@ -495,6 +502,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		}
 	}
 	
+	// create plot from list of errors
 	private Plot plotError() {
 		Plot plot = new Plot("Error Plot", "Iteration", "Error");
 		float[] xs = new float[iterations];
@@ -508,6 +516,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		return plot;
 	}
 	
+	// calculate error using differences between the blurred guess and original image
 	private float getError(float[][][][] guess, float[][][][] original) {
 		float originalTotal = 0;
 		float difference = 0;

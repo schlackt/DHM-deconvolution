@@ -151,7 +151,7 @@ public class Deconvolve_Image_Utils {
 		return path;
 	}
 	
-	// Show window to select a directory. Returns the file path as a string.
+	// Show window to select a directory. Returns the path as a string.
 	public String getDirectory(String message) {
 		String path;
 		DirectoryChooser dc = new DirectoryChooser(message);
@@ -222,6 +222,7 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
+	// given an amplitude and phase matrix, build a complex matrix compatible with the FFT package
 	public float[][][] toFFTform(float[][][] amp, float[][][] phase) {
 		int a_slices = amp.length;
 		int a_height = amp[0].length;
@@ -256,6 +257,7 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
+	// given a real and imaginary matrix, build a complex matrix compatible with the FFT package
 	public float[][][] toFFTformRect(float[][][] reMat, float[][][] imMat) {
 		int a_slices = reMat.length;
 		int a_height = reMat[0].length;
@@ -290,7 +292,7 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
-	// takes a "complex" matrix and squish it back to a simple amplitude matrix
+	// takes a complex matrix and squish it back to a simple amplitude matrix
 	public float[][][] getAmplitudeMat(float[][][] mat) {
 		int slices = mat.length;
 		int height = mat[0].length;
@@ -318,7 +320,7 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
-	// takes a "complex" matrix and squish it back to a phase matrix
+	// takes a complex matrix and returns a phase matrix
 	public float[][][] getPhaseMat(float[][][] mat) {
 		int slices = mat.length;
 		int height = mat[0].length;
@@ -346,7 +348,7 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
-	// takes a "complex" matrix and returns just the real parts
+	// takes a complex matrix and returns just the real parts
 	public float[][][] getReMat(float[][][] mat) {
 		int slices = mat.length;
 		int height = mat[0].length;
@@ -374,7 +376,7 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
-	// takes a "complex" matrix and returns just the imaginary parts
+	// takes a complex matrix and returns just the imaginary parts
 	public float[][][] getImMat(float[][][] mat) {
 		int slices = mat.length;
 		int height = mat[0].length;
@@ -501,48 +503,51 @@ public class Deconvolve_Image_Utils {
 	}
 	
 	// scales a  matrix (can be real or complex)
-		public float[][][][] scaleMat(float[][][][] mat, float scale) {
-			int frames = mat.length;
-			int slices = mat[0].length;
-			int height = mat[0][0].length;
-			int width = mat[0][0][0].length;
-			float[][][][] retMat = new float[frames][slices][height][width];
-			
-			for (int i = 0; i < frames; i++)
-				for (int j = 0; j < slices; j++)
-					for (int k = 0; k < height; k++) 
-						for (int l = 0; l < width; l++)
-							retMat[i][j][k][l] = scale * mat[i][j][k][l];
-					
-			
-			return retMat;
-		}
+	public float[][][][] scaleMat(float[][][][] mat, float scale) {
+		int frames = mat.length;
+		int slices = mat[0].length;
+		int height = mat[0][0].length;
+		int width = mat[0][0][0].length;
+		float[][][][] retMat = new float[frames][slices][height][width];
+		
+		for (int i = 0; i < frames; i++)
+			for (int j = 0; j < slices; j++)
+				for (int k = 0; k < height; k++) 
+					for (int l = 0; l < width; l++)
+						retMat[i][j][k][l] = scale * mat[i][j][k][l];
+				
+		
+		return retMat;
+	}
 	
 	// covert 3D matrix to ImagePlus image
-		public ImagePlus reassign(float[][][] testMat, String impType, String title) {
-			int frames = 1;
-			int width = testMat[0][0].length;
-			int height = testMat[0].length;
-			int slices = testMat.length;
-			int bitdepth = 24;
-			
-			if (impType == "GRAY32")
-				bitdepth = 32;
-			if (impType == "GRAY16")
-				bitdepth = 16;
-			if (impType == "GRAY8") 
-				bitdepth = 8;
-			
-			ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, bitdepth);
-			ImageStack stack = testImage.getStack();
-			
-			for (int j = 1; j <= slices; j++)
-				for (int k = 0; k < height; k++)
-					for (int l = 0; l < width; l++)
-						stack.setVoxel(l, k, testImage.getStackIndex(1, j, 1)-1, (double)testMat[j-1][k][l]);
+	public ImagePlus reassign(float[][][] testMat, String impType, String title) {
+		int frames = 1;
+		int width = testMat[0][0].length;
+		int height = testMat[0].length;
+		int slices = testMat.length;
+		int bitdepth = 24;
+		
+		// get correct bitdepth based on desired output type
+		if (impType == "GRAY32")
+			bitdepth = 32;
+		if (impType == "GRAY16")
+			bitdepth = 16;
+		if (impType == "GRAY8") 
+			bitdepth = 8;
+		
+		// create blank hyperstack
+		ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, bitdepth);
+		ImageStack stack = testImage.getStack();
+		
+		// fill the hyperstack using z-positions given by getStackIndex. Slices are 1-based 
+		for (int j = 1; j <= slices; j++)
+			for (int k = 0; k < height; k++)
+				for (int l = 0; l < width; l++)
+					stack.setVoxel(l, k, testImage.getStackIndex(1, j, 1)-1, (double)testMat[j-1][k][l]);
 
-			return testImage;
-		}
+		return testImage;
+	}
 	
 	// covert 4D matrix to ImagePlus image
 	public ImagePlus reassign(float[][][][] testMat, String impType, String title) {
@@ -590,7 +595,7 @@ public class Deconvolve_Image_Utils {
 					mat[i][j][k] = (mat[i][j][k] - min)*(newMax - newMin)/(max - min) + newMin;
 	}
 	
-	// invert an image
+	// invert an entire image
     public void invert(ImagePlus imp) {
     	ImageProcessor ip;
 		for (int i = 1; i <= imp.getStackSize(); i++) {
@@ -613,7 +618,7 @@ public class Deconvolve_Image_Utils {
     				mat[i][j][k] = mat[i][j][k] / total;
     }
     
- // normalize a real matrix so that all pixels add to 1
+    // normalize a real matrix and imaginary matrix so that all amplitudes add to 1
     public void normalize(float[][][] matRe, float[][][] matIm) {
     	float total = 0;
     	for (int i = 0; i < matRe.length; i++)
@@ -629,8 +634,8 @@ public class Deconvolve_Image_Utils {
     			}
     }
     
-    // after deconvolution, the quadrants of the image are flipped around for some reason. This puts it back to normal.
-    public float[][][] formatWienerAmp(float[][][] ampMat) {
+    // after taking the inverse Fourier transform, the quadrants of the image are flipped around for some reason. This puts it back to normal.
+    public float[][][] formatIFFT(float[][][] ampMat) {
     	int slices = ampMat.length;
     	int height = ampMat[0].length;
     	int width = ampMat[0][0].length;
@@ -692,14 +697,15 @@ public class Deconvolve_Image_Utils {
 		
 		float[][][] reMat = getReMat(retMat);
 		float[][][] imMat = getImMat(retMat);
-		reMat = formatWienerAmp(reMat);
-		imMat = formatWienerAmp(imMat);
+		reMat = formatIFFT(reMat);
+		imMat = formatIFFT(imMat);
 		
 		retMat = toFFTformRect(reMat, imMat);
 		
 		return retMat;
 	}
 	
+	// normalize a convolved image so it has the same minimum and maximum amplitude as the original image
 	public void fitConvolution(float[][][] convolved, float[][][] original) {
 		int slices = convolved.length;
 		int height = convolved[0].length;
@@ -707,21 +713,20 @@ public class Deconvolve_Image_Utils {
 		float[][][] originalAmps = getAmplitudeMat(original);
 		float[][][] convolvedAmpsOld = getAmplitudeMat(convolved);
 		float[][][] convolvedAmpsNew = getAmplitudeMat(convolved);
-		
-
-			float min = minOf(originalAmps);
-			float max = maxOf(originalAmps);
+	
+		float min = minOf(originalAmps);
+		float max = maxOf(originalAmps);
 			
-			linearShift(convolvedAmpsNew, min, max);
-			for (int j = 0; j < slices; j++)
-				for (int k = 0; k < height; k++)
-					for (int l = 0; l < width; l++) {
-						convolved[j][k][2*l] = convolved[j][k][2*l] * convolvedAmpsNew[j][k][l] / convolvedAmpsOld[j][k][l];
-						convolved[j][k][2*l + 1] = convolved[j][k][2*l + 1] * convolvedAmpsNew[j][k][l] / convolvedAmpsOld[j][k][l];
-					}			
-		
+		linearShift(convolvedAmpsNew, min, max);
+		for (int j = 0; j < slices; j++)
+			for (int k = 0; k < height; k++)
+				for (int l = 0; l < width; l++) {
+					convolved[j][k][2*l] = convolved[j][k][2*l] * convolvedAmpsNew[j][k][l] / convolvedAmpsOld[j][k][l];
+					convolved[j][k][2*l + 1] = convolved[j][k][2*l + 1] * convolvedAmpsNew[j][k][l] / convolvedAmpsOld[j][k][l];
+				}				
 	}
 	
+	// find error of a deconvolved image
 	public double getError(float[][][][] guess, float[][][][] image, float[][][] psfMat) {
 		int frames = image.length;
 		int slices = image[0].length;
@@ -729,11 +734,13 @@ public class Deconvolve_Image_Utils {
 		int width = image[0][0][0].length / 2;
 		float[][][][] blurredMat = new float[frames][slices][height][2*width];
 		
+		// find blurred guess by convolving with PSF
 		for (int i = 0; i < frames; i++) {
 			blurredMat[i] = fourierConvolve(guess[i], psfMat);
 			fitConvolution(blurredMat[i], image[i]);
 		}
 		
+		// find mean percent error of all the pixels
 		float originalTotal = 0;
 		float difference = 0;
 		for (int i = 0; i < frames; i++)
@@ -747,6 +754,7 @@ public class Deconvolve_Image_Utils {
 		return difference / originalTotal;
 	}
 	
+	// find minimum of real matrix
 	public float minOf(float[][][] mat) {
 		float ret = mat[0][0][0];
 		for (int i = 0; i < mat.length; i++)
@@ -755,9 +763,11 @@ public class Deconvolve_Image_Utils {
 					if (ret > mat[i][j][k])
 						ret = mat[i][j][k];
 				}
+		
 		return ret;
 	}
 	
+	// find maximum of real matrix
 	public float maxOf(float[][][] mat) {
 		float ret = mat[0][0][0];
 		for (int i = 0; i < mat.length; i++)
@@ -766,6 +776,7 @@ public class Deconvolve_Image_Utils {
 					if (ret < mat[i][j][k])
 						ret = mat[i][j][k];
 				}
+		
 		return ret;
 	}
 }

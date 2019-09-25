@@ -103,6 +103,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		decon_hyper = gd.getNextBoolean();
 		save_files = gd.getNextBoolean();
 		
+		// input dialog appears if user does not want to calculate the snr
 		if (!getSNR) {
 			GenericDialog gd2 = new GenericDialog("Custom Beta");
 			gd2.addNumericField("Beta:", 0.001, 3);
@@ -147,6 +148,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			save_path += "Deconvolved";
 			new File(save_path).mkdirs();
 
+			// check if system uses '/' or '\'
 			if (save_path.indexOf('\\') >= 0) 
 				divisor = "\\";
 			else
@@ -154,6 +156,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			
 			save_path += divisor;
 			
+			// create appropriate folders for deconvolved images
 			if (decon_choice == "Complex (Polar)") {
 				new File(save_path + "Amplitude").mkdirs();
 				new File(save_path + "Phase").mkdirs();
@@ -202,19 +205,22 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		cal = PSF.getCalibration();
 		PSF.close();
 		
+		// get imaginary/phase PSF image if doing complex deconvolution
 		if (decon_choice != "Standard") {
 			path = diu.getPath("Select the PSF imaginary or phase image:");
 			PSF = IJ.openImage(path);
 			psfPhaseMat = diu.getMatrix3D(PSF);
 		}
 		
+		// normalize PSF matrix accordingly
 		if (normalizePSF && decon_choice != "Complex (Rectangular)")
 			diu.normalize(psfMat);
-		
 		if (normalizePSF && decon_choice == "Complex (Rectangular)")
 			diu.normalize(psfMat, psfPhaseMat);
 			
+		// decide which deconvolution procedure to follow based on user preferences
 		if (decon_hyper) {
+			// get imaginary/phase image if doing complex deconvolution
 			if (decon_choice != "Standard") {
 				path = diu.getPath("Select the imaginary or phase image:");
 				ImagePlus temp = IJ.openImage(path);
@@ -231,24 +237,24 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 				save_from_files();
 			else
 				show_from_files();
-		}
-		
+		}		
 	}
 	
+	// save frames from a hyperstack
 	public void save_from_hyperstack() {
 		ampMat = diu.getMatrix4D(image);
 		Wiener_Utils wu = new Wiener_Utils(width, height, slices, frames, 1/SNR);
 		IJ.showStatus("Deconvolving hyperstack...");
 		
+		// deconvolve using proper strategy
 		if (decon_choice == "Standard")
 			wu.deconvolve(ampMat, psfMat, get_error);
-		
 		else if (decon_choice == "Complex (Polar)")
 			wu.deconvolve(ampMat, phaseMat, psfMat, psfPhaseMat, get_error, "Polar");
-		
 		else
 			wu.deconvolve(ampMat, phaseMat, psfMat, psfPhaseMat, get_error, "Rectangular");
 		
+		// loop over the frames of the deconvolved image and save them in the appropriate folders
 		IJ.showStatus("Saving images...");
 		for (int i = 0; i < frames; i++) {
 			ImagePlus tempImg = diu.reassign(wu.imgComplex[i], choice, Integer.toString(i));
@@ -273,6 +279,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		}
 	}
 	
+	// save by frames from images stored in a folder
 	public void save_from_files() {
 		ampMat = new float[1][slices][height][width];
 		if (decon_choice != "Standard")
@@ -280,12 +287,14 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		
 		Wiener_Utils wu = new Wiener_Utils(width, height, slices, 1, 1/SNR);
 		
+		// loop over images in stack
 		for (int i = 0; i < stack_list.length; i++) {
 			IJ.showStatus("Processing frame " + Integer.toString(i + 1) + " of " + Integer.toString(stack_list.length) + "...");
 			ImagePlus tempImg = IJ.openImage(stack_path + stack_list[i]);
 			ampMat = diu.getMatrix4D(tempImg);
 			tempImg.close();
 			
+			// deconvolve and save
 			if (decon_choice == "Standard") {
 				wu.deconvolve(ampMat, psfMat, get_error);
 				
@@ -295,6 +304,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 				tempImg.close();
 			}
 			else if (decon_choice == "Complex (Polar)") {
+				// get corresponding phase image
 				ImagePlus phaseImg = IJ.openImage(stack_path_phase + stack_list_phase[i]);
 				phaseMat = diu.getMatrix4D(phaseImg);
 				phaseImg.close();
@@ -311,6 +321,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 				tempImg.close();
 			}
 			else {
+				// get corresponding complex image
 				ImagePlus imImg = IJ.openImage(stack_path_phase + stack_list_phase[i]);
 				phaseMat = diu.getMatrix4D(imImg);
 				imImg.close();
@@ -329,6 +340,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		}
 	}
 	
+	// open a deconvolved hyperstack from a hyperstack
 	public void show_from_hyperstack() {
 		ampMat = diu.getMatrix4D(image);
 		Wiener_Utils wu = new Wiener_Utils(width, height, slices, frames, 1/SNR);
@@ -374,6 +386,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			IJ.showMessage("Error: " + Float.toString(wu.error * 100) + "%");
 	}
 	
+	// open a deconvolved hyperstack from saved images
 	public void show_from_files() {
 		imgMat = new float[stack_list.length][slices][height][width];
 		ampMat = new float[1][slices][height][width];
@@ -385,12 +398,14 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		
 		Wiener_Utils wu = new Wiener_Utils(width, height, slices, 1, 1/SNR);
 		
+		// loop through frames in folder and deconvolve
 		for (int i = 0; i < stack_list.length; i++) {
 			IJ.showStatus("Processing frame " + Integer.toString(i + 1) + " of " + Integer.toString(stack_list.length) + "...");
 			ImagePlus tempImg = IJ.openImage(stack_path + stack_list[i]);
 			ampMat = diu.getMatrix4D(tempImg);
 			tempImg.close();
 			
+			// put deconvolved frame in ith slot of hyperstack matrix
 			if (decon_choice == "Standard") {
 				wu.deconvolve(ampMat, psfMat, get_error);
 				imgMat[i] = wu.imgComplex[0];
@@ -413,11 +428,10 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 				wu.deconvolve(ampMat, phaseMat, psfMat, psfPhaseMat, get_error, "Rectangular");
 				imgMat[i] = wu.imgComplex[0];
 				imgMatPhase[i] = wu.imgPhase[0];
-			}
-		
-				
+			}		
 		}
 		
+		// show final images
 		if (decon_choice == "Standard") {
 			ImagePlus tempImage = diu.reassign(imgMat, choice, "Result");
 			tempImage.setCalibration(cal);
