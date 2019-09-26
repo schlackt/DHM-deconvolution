@@ -46,11 +46,11 @@ public class Regularization_Utils {
 	public float errorTilde;
 	public float[][][][] guess;
 	
-	// mass initialization
+	// mass initialization, assume image_mat and psf_mat are in FFT form
 	public Regularization_Utils(float[][][][] image_mat, float[][][] psf_mat, float img_dx, float img_dz, float smooth_p, float nonlinearity_p) {
 		imgMat = image_mat;
 		psfMat = psf_mat;
-		width = imgMat[0][0][0].length;
+		width = imgMat[0][0][0].length / 2;
 		height = imgMat[0][0].length;
 		slices = imgMat[0].length;
 		frames = imgMat.length;
@@ -81,10 +81,6 @@ public class Regularization_Utils {
 		nPrime = new float[frames][slices][height][2*width];
 		pMatFT = new float[slices][height][2*width];
 		piMatFT = new float[slices][height][2*width];
-		
-		psfMat = diu.toFFTform(psfMat);
-		for (int i = 0; i < frames; i++)
-			imgMat[i] = diu.toFFTform(imgMat[i]);
 		
 		for (int i = 0; i < slices; i++)
 			for (int j = 0; j < height; j++)
@@ -384,15 +380,6 @@ public class Regularization_Utils {
 						
 						error = errorTilde;
 					}
-	}
-	
-	// turn complex matrices back into real matrices
-	public void getAmplitude(float norm) {
-		for (int i = 0; i < frames; i++) {
-			guess[i] = diu.getAmplitudeMat(guess[i]);
-			guess[i] = diu.formatIFFT(guess[i]);
-			diu.linearShift(guess[i], 0, norm);
-		}	
 	}
 	
 	// take square root of complex number, return as {re, im}

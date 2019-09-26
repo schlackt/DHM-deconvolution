@@ -297,17 +297,20 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		}
 	}
 	
+	// save deconvolved images by frame from stored images
 	public void save_from_files() {
 		ampMat = new float[1][slices][height][width];
 		if (decon_choice != "Standard")
 			phaseMat = new float[1][slices][height][width];
 		
+		// loop through images in folder
 		for (int i = 0; i < stack_list.length; i++) {
 			IJ.showStatus("Processing frame " + Integer.toString(i + 1) + " of " + Integer.toString(stack_list.length) + "...");
 			ImagePlus tempImg = IJ.openImage(stack_path + stack_list[i]);
 			ampMat = diu.getMatrix4D(tempImg);
 			tempImg.close();
 			
+			// deconvolve and save in appropriate folder
 			if (decon_choice == "Standard") {
 				ampMat = diu.toFFTform(ampMat);
 				psfMat = diu.toFFTform(psfMat);
@@ -359,6 +362,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		}
 	}
 	
+	// open deconvolved images from currently open hyperstack
 	public void show_from_hyperstack() {
 		ampMat = diu.getMatrix4D(image);
 		IJ.showStatus("Deconvolving hyperstack...");

@@ -669,10 +669,18 @@ public class Deconvolve_Image_Utils {
     				reformat[i][j+halfHeight+1][k-halfWidth-1] = placehold;
     			}
     	}
-   
  
     	return reformat;
     }
+    
+	public float[][][][] formatIFFT(float[][][][] ampMat) {
+		int frames = ampMat.length;
+		float[][][][] ret = new float[frames][ampMat[0].length][ampMat[0][0].length][ampMat[0][0][0].length];
+		for (int i = 0; i < frames; i++)
+			ret[i] = formatIFFT(ampMat[i]);
+		
+		return ret;
+	}
     
     // convolve two matrices by elementwise multiplication in Fourier space. mat1, mat2, and ret are all in FFT form
 	public float[][][] fourierConvolve(float[][][] mat1, float[][][] mat2) {

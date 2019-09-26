@@ -27,18 +27,23 @@ public class Regularization implements PlugInFilter {
 	private int iterations;
 	private float lateral_spacing;
 	private float axial_spacing;
-	private float norm = 255;
 	private String path;
 	private String choice;
 	private String stack_path;
+	private String stack_path_phase;
 	private String save_path;
+	private String decon_choice;
+	private String divisor;
 	private File stacks;
 	private String[] stack_list;
+	private String[] stack_list_phase;
 	private boolean normalizePSF;
-	private boolean do_inversion;
 	private boolean decon_hyper;
 	private boolean save_files;
+	private float[][][] psfPhaseMat;
 	private float[][][][] imgMat = new float[1][1][1][1];
+	private float[][][][] imgMatPhase = new float[1][1][1][1];
+	private float[][][][] phaseMat;
 	
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
 
@@ -64,15 +69,16 @@ public class Regularization implements PlugInFilter {
 	// Show window for various settings
 	private boolean showDialog() {
 		String[] choices = {"8-bit", "16-bit", "32-bit"};
+		String[] decon_choices = {"Standard", "Complex (Polar)", "Complex (Rectangular)"};
 		GenericDialog gd = new GenericDialog("Deconvolution Setup");
 		gd.addChoice("Output Image:", choices, "32-bit");
+		gd.addChoice("Deconvolution Style: ", decon_choices, "Standard");
 		gd.addNumericField("Smoothness Factor: ", 0.01, 2);
 		gd.addNumericField("Nonlinearity Factor: ", 0.001, 3);
 		gd.addNumericField("# Iterations: ", 3, 0);
 		gd.addNumericField("Lateral Spacing (o.u.): ", 0.178223, 3);
 		gd.addNumericField("Axial Spacing (o.u.): ", 10, 0);
 		gd.addCheckbox("Normalize PSF?", true);
-		gd.addCheckbox("Invert Images?", true);
 		gd.addCheckbox("Deconvolve from Hyperstack?", true);
 		gd.addCheckbox("Save by Frames?", false);
 
@@ -82,13 +88,13 @@ public class Regularization implements PlugInFilter {
 
 		// get entered values
 		choice = gd.getNextChoice();
+		decon_choice = gd.getNextChoice();
 		smooth = (float) gd.getNextNumber();
 		nonlinearity = (float) gd.getNextNumber();
 		iterations = (int) gd.getNextNumber();
 		lateral_spacing = (float) gd.getNextNumber();
 		axial_spacing = (float) gd.getNextNumber();
 		normalizePSF = gd.getNextBoolean();
-		do_inversion = gd.getNextBoolean();
 		decon_hyper = gd.getNextBoolean();
 		save_files = gd.getNextBoolean();
 		
@@ -98,15 +104,33 @@ public class Regularization implements PlugInFilter {
 			choice = "GRAY16";
 		else {
 			choice = "GRAY32";
-			norm = 1;
 		}
 		
 		// find the stack directory and get a list of the files in it
-		if (!decon_hyper) {
+		if (!decon_hyper && decon_choice == "Standard") {
 			stack_path = diu.getDirectory("Please select the folder of stacks:");
 			stacks = new File(stack_path);
 			stack_list = stacks.list();
-			imgMat = new float[stack_list.length][1][1][1];
+		}
+			
+		if (!decon_hyper && decon_choice == "Complex (Polar)") {
+			stack_path = diu.getDirectory("Please select the folder of amplitude stacks:");				
+			stacks = new File(stack_path);
+			stack_list = stacks.list();
+			
+			stack_path_phase = diu.getDirectory("Please select the folder of phase stacks:");
+			stacks = new File(stack_path_phase);
+			stack_list_phase = stacks.list();
+		}
+		
+		if (!decon_hyper && decon_choice == "Complex (Rectangular)") {
+			stack_path = diu.getDirectory("Please select the folder of real stacks:");
+			stacks = new File(stack_path);
+			stack_list = stacks.list();
+			
+			stack_path_phase = diu.getDirectory("Please select the folder of imaginary stacks:");
+			stacks = new File(stack_path_phase);
+			stack_list_phase = stacks.list();
 		}
 		
 		// get desired save directory
@@ -115,10 +139,23 @@ public class Regularization implements PlugInFilter {
 			save_path += "Deconvolved";
 			new File(save_path).mkdirs();
 
-			if (save_path.indexOf('\\') >= 0)
-				save_path += "\\";
+			// determine whether system uses '/' or '\'
+			if (save_path.indexOf('\\') >= 0) 
+				divisor = "\\";
 			else
-				save_path += "/";
+				divisor= "/";
+			
+			save_path += divisor;
+			
+			// create appropriate folders for deconvolved images
+			if (decon_choice == "Complex (Polar)") {
+				new File(save_path + "Amplitude").mkdirs();
+				new File(save_path + "Phase").mkdirs();
+			}
+			if (decon_choice == "Complex (Rectangular)") {
+				new File(save_path + "Real").mkdirs();
+				new File(save_path + "Imaginary").mkdirs();
+			}	
 		}
 
 		return true;
@@ -126,26 +163,37 @@ public class Regularization implements PlugInFilter {
 	
 	public void process(ImageProcessor ip) {
 		// get the PSF file path or exit if the user presses "Cancel"
-		path = diu.getPath("Select the PSF image:");
+		path = diu.getPath("Select the PSF real or amplitude image:");
 		if (path == null) {
 			return;
 		}
 		PSF = IJ.openImage(path);
+
+		float[][][] psfMat = diu.getMatrix3D(PSF);
+		Calibration cal = PSF.getCalibration();
 		
-		//invert PSF and image so signal takes high values instead of low values
-		if (do_inversion) {
-			diu.invert(PSF);
-			diu.invert(image);
+		// get imaginary/phase component of the PSF
+		if (decon_choice != "Standard") {
+			path = diu.getPath("Select the PSF imaginary or phase image:");
+			PSF = IJ.openImage(path);
+			psfPhaseMat = diu.getMatrix3D(PSF);
 		}
 		
-		float[][][] psfMat = diu.getMatrix3D(PSF);
-		if (do_inversion)
-			diu.invert(PSF);
-		Calibration cal = PSF.getCalibration();
+		// normalize PSF appropriately
+		if (normalizePSF && decon_choice != "Complex (Rectangular)")
+			diu.normalize(psfMat);
+		if (normalizePSF && decon_choice == "Complex (Rectangular)")
+			diu.normalize(psfMat, psfPhaseMat);
+		
 		PSF.close();
 		
-		if (normalizePSF)
-			diu.normalize(psfMat);
+		// put PSF into correct FFT form
+		if (decon_choice == "Standard")
+			psfMat = diu.toFFTform(psfMat);
+		else if (decon_choice == "Complex (Polar)")
+			psfMat = diu.toFFTform(psfMat, psfPhaseMat);
+		else
+			psfMat = diu.toFFTformRect(psfMat, psfPhaseMat);
 		
 		int decon_loops = 1;
 		float[][][][] ampMat = new float[1][1][1][1];
@@ -163,10 +211,37 @@ public class Regularization implements PlugInFilter {
 		for (int j = 0; j < decon_loops; j++) {
 			if (!decon_hyper) {
 				tempImg = IJ.openImage(stack_path + stack_list[j]);
-				if (do_inversion)
-					diu.invert(tempImg);
 				ampMat = diu.getMatrix4D(tempImg);
+				if (decon_choice == "Standard")
+					ampMat = diu.toFFTform(ampMat);
 				tempImg.close();
+				if (decon_choice != "Standard") {
+					tempImg = IJ.openImage(stack_path_phase + stack_list_phase[j]);
+					if (decon_choice == "Complex (Polar)") {
+						ampMat = diu.toFFTform(ampMat, diu.getMatrix4D(tempImg));
+						tempImg.close();
+					}
+					else {
+						ampMat = diu.toFFTformRect(ampMat, diu.getMatrix4D(tempImg));
+						tempImg.close();
+					}
+				}
+			}
+			else {
+				if (decon_choice == "Standard")
+					ampMat = diu.toFFTform(ampMat);
+				else {
+					path = diu.getPath("Select the imaginary or phase image:");
+					tempImg = IJ.openImage(path);
+					phaseMat = diu.getMatrix4D(tempImg);
+					
+					if (decon_choice == "Complex (Polar)")
+						ampMat = diu.toFFTform(ampMat, phaseMat);
+					else
+						ampMat = diu.toFFTformRect(ampMat, phaseMat);
+					
+					tempImg.close();
+				}
 			}
 			Regularization_Utils ru = new Regularization_Utils(ampMat, psfMat, lateral_spacing, axial_spacing, smooth, nonlinearity);
 			// deconvolve according to the flow chart in Arigovindan+ 2013 (supplementary information)
@@ -196,51 +271,142 @@ public class Regularization implements PlugInFilter {
 				ru.update();
 			}
 			
-			ru.getAmplitude(norm);
+			if (decon_choice == "Standard") {
+				ampMat = diu.getAmplitudeMat(ru.guess);
+				diu.formatIFFT(ampMat);
+			}
+			else if (decon_choice == "Complex (Polar)") {
+				ampMat = diu.getAmplitudeMat(ru.guess);
+				phaseMat = diu.getPhaseMat(ru.guess);
+				diu.formatIFFT(ampMat);
+				diu.formatIFFT(phaseMat);
+			}
+			else {
+				ampMat = diu.getReMat(ru.guess);
+				phaseMat = diu.getImMat(ru.guess);
+				diu.formatIFFT(ampMat);
+				diu.formatIFFT(phaseMat);
+			}
 			
 			if (decon_hyper) {
 				if (!save_files) {
-					ImagePlus result = diu.reassign(ru.guess, choice, "Result");
-					result.setCalibration(cal);
-					if (do_inversion)
-						diu.invert(result);		
+					if (decon_choice == "Standard") {
+						ImagePlus result = diu.reassign(ampMat, choice, "Result");
+						result.setCalibration(cal);	
 				
-					result.show();
-				}
-				else
-					for (int i = 0; i < ru.guess.length; i++) {
-						ImagePlus result = diu.reassign(ru.guess[i], choice, Integer.toString(i));
-						result.setCalibration(cal);
-						if (do_inversion)
-							diu.invert(result);
-						IJ.saveAsTiff(result, save_path + Integer.toString(i) + ".tif");
+						result.show();
 					}
+					else if (decon_choice == "Complex (Polar)") {
+						ImagePlus amp = diu.reassign(ampMat, choice, "Amplitude");
+						amp.setCalibration(cal);
+						amp.show();
+						
+						ImagePlus phase = diu.reassign(phaseMat, choice, "Phase");
+						phase.setCalibration(cal);
+						phase.show();
+					}
+					else {
+						ImagePlus real = diu.reassign(ampMat, choice, "Real");
+						real.setCalibration(cal);
+						real.show();
+						
+						ImagePlus imag = diu.reassign(phaseMat, choice, "Imaginary");
+						imag.setCalibration(cal);
+						imag.show();
+					}
+				}
+				else {
+					if (decon_choice == "Standard") {
+						for (int i = 0; i < ampMat.length; i++) {
+							ImagePlus result = diu.reassign(ampMat[i], choice, Integer.toString(i));
+							result.setCalibration(cal);
+							IJ.saveAsTiff(result, save_path + Integer.toString(i) + ".tif");
+						}
+					}
+					else if (decon_choice == "Complex (Polar)") {
+						for (int i = 0; i < ampMat.length; i++) {
+							ImagePlus amp = diu.reassign(ampMat[i], choice, Integer.toString(i));
+							amp.setCalibration(cal);
+							IJ.saveAsTiff(amp, save_path + "Amplitude" + divisor + Integer.toString(i) + ".tif");
+							
+							ImagePlus phase = diu.reassign(phaseMat[i], choice, Integer.toString(i));
+							phase.setCalibration(cal);
+							IJ.saveAsTiff(phase, save_path + "Phase" + divisor + Integer.toString(i) + ".tif");
+						}
+					}
+					else {
+						for (int i = 0; i < ampMat.length; i++) {
+							ImagePlus real = diu.reassign(ampMat[i], choice, Integer.toString(i));
+							real.setCalibration(cal);
+							IJ.saveAsTiff(real, save_path + "Real" + divisor + Integer.toString(i) + ".tif");
+							
+							ImagePlus imag = diu.reassign(phaseMat[i], choice, Integer.toString(i));
+							imag.setCalibration(cal);
+							IJ.saveAsTiff(imag, save_path + "Imaginary" + divisor + Integer.toString(i) + ".tif");
+						}
+					}
+				}		
 			}
 			else {
-				if (!save_files)
-					imgMat[j] = ru.guess[0];
+				if (!save_files) {
+					imgMat[j] = ampMat[0];
+					if (decon_choice != "Standard")
+						imgMatPhase[j] = phaseMat[0];
+				}
 				else {
-					ImagePlus result = diu.reassign(ru.guess[0], choice, Integer.toString(j));
-					result.setCalibration(cal);
-					if (do_inversion)
-						diu.invert(result);
-					IJ.saveAsTiff(result, save_path + Integer.toString(j) + ".tif");
+					if (decon_choice == "Standard") {
+						ImagePlus result = diu.reassign(ampMat[0], choice, Integer.toString(j));
+						result.setCalibration(cal);
+						IJ.saveAsTiff(result, save_path + Integer.toString(j) + ".tif");
+					}
+					else if (decon_choice == "Complex (Polar)") {
+						ImagePlus amp = diu.reassign(ampMat[0], choice, Integer.toString(j));
+						amp.setCalibration(cal);
+						IJ.saveAsTiff(amp, save_path + "Amplitude" + divisor + Integer.toString(j) + ".tif");
+						
+						ImagePlus phase = diu.reassign(phaseMat[0], choice, Integer.toString(j));
+						phase.setCalibration(cal);
+						IJ.saveAsTiff(phase, save_path + "Phase" + divisor + Integer.toString(j) + ".tif");
+					}
+					else {
+						ImagePlus real = diu.reassign(ampMat[0], choice, Integer.toString(j));
+						real.setCalibration(cal);
+						IJ.saveAsTiff(real, save_path + "Real" + divisor + Integer.toString(j) + ".tif");
+						
+						ImagePlus imag = diu.reassign(phaseMat[0], choice, Integer.toString(j));
+						imag.setCalibration(cal);
+						IJ.saveAsTiff(imag, save_path + "Imaginary" + divisor + Integer.toString(j) + ".tif");
+					}
 				}
 			}
 		}
 		
 		if (!decon_hyper && !save_files) {
-			ImagePlus result = diu.reassign(imgMat, choice, "Result");
-			result.setCalibration(cal);
-			if (do_inversion) {
-				diu.invert(result);
-				diu.invert(image);
-			}
-			result.show();
-		}
+			if (decon_choice == "Standard") {
+				ImagePlus result = diu.reassign(imgMat, choice, "Result");
+				result.setCalibration(cal);	
 		
-		if (do_inversion)
-			diu.invert(image);
+				result.show();
+			}
+			else if (decon_choice == "Complex (Polar)") {
+				ImagePlus amp = diu.reassign(imgMat, choice, "Amplitude");
+				amp.setCalibration(cal);
+				amp.show();
+				
+				ImagePlus phase = diu.reassign(imgMatPhase, choice, "Phase");
+				phase.setCalibration(cal);
+				phase.show();
+			}
+			else {
+				ImagePlus real = diu.reassign(imgMat, choice, "Real");
+				real.setCalibration(cal);
+				real.show();
+				
+				ImagePlus imag = diu.reassign(imgMatPhase, choice, "Imaginary");
+				imag.setCalibration(cal);
+				imag.show();
+			}
+		}
 	}
 	
 	public void showAbout() {
