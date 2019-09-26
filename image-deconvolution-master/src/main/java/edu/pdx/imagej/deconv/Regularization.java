@@ -9,10 +9,13 @@
 package edu.pdx.imagej.deconv;
 
 import java.io.File;
+import java.util.ArrayList;
 
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
+import ij.gui.Plot;
+import ij.gui.PlotWindow;
 import ij.measure.Calibration;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
@@ -21,7 +24,7 @@ public class Regularization implements PlugInFilter {
 	protected ImagePlus image;
 	protected ImagePlus PSF;
 
-	private int tildeCount = 1;
+	private int tildeCount = 2;
 	private float smooth;
 	private float nonlinearity;
 	private int iterations;
@@ -253,20 +256,29 @@ public class Regularization implements PlugInFilter {
 			
 				ru.get_guessTilde();
 				ru.getEnergyMeasure(true);
-				float[] tildes = {ru.errorTilde, ru.errorTilde, ru.errorTilde, ru.errorTilde};
+				ArrayList<Double> errors = new ArrayList<Double>();
+				errors.add((double)(ru.error - ru.errorTilde));
+				ArrayList<Double> tildeCounts = new ArrayList<Double>();
+				tildeCounts.add(1.0);
 				while (!ru.checkTilde()) {
-					IJ.showStatus("Tilde check #" + Integer.toString(tildeCount) + "...");
+					Plot plot = new Plot("Error Plot (Iteration " + Integer.toString(i+1) + ")", "Tilde Check", "Error Difference");
+					plot.addPoints(tildeCounts, errors, Plot.CIRCLE);
+					plot.addPoints(tildeCounts, errors, Plot.LINE);
+					if (Math.abs(errors.get(0)) > 1000)
+						plot.setAxisYLog(true);
+					PlotWindow plotwindow = plot.show();
+					
+					IJ.showStatus("Tilde check #" + Integer.toString(tildeCount) + " on iteration " + Integer.toString(i + 1) + "...");
 					ru.damping = (float) (0.7 * ru.damping);
 					ru.get_guessTilde();
 					ru.getEnergyMeasure(true);
-					tildes[tildeCount % 4] = ru.errorTilde;
-					if (tildes[0] < tildes[1] && tildes[1] < tildes[2] && tildes[2] < tildes[3]) {
-						IJ.showMessage("Error seems to be diverging. Please try again with different parameters.");
-						return;
-					}
+					tildeCounts.add((double)tildeCount);
+					errors.add((double)(ru.error - ru.errorTilde));
+					plotwindow.close();
+					
 					tildeCount += 1;
 				}
-				tildeCount = 1;
+				tildeCount = 2;
 				
 				ru.update();
 			}
