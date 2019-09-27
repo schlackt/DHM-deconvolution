@@ -526,18 +526,9 @@ public class Deconvolve_Image_Utils {
 		int width = testMat[0][0].length;
 		int height = testMat[0].length;
 		int slices = testMat.length;
-		int bitdepth = 24;
 		
-		// get correct bitdepth based on desired output type
-		if (impType == "GRAY32")
-			bitdepth = 32;
-		if (impType == "GRAY16")
-			bitdepth = 16;
-		if (impType == "GRAY8") 
-			bitdepth = 8;
-		
-		// create blank hyperstack
-		ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, bitdepth);
+		// create blank 32-bit hyperstack
+		ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, 32);
 		ImageStack stack = testImage.getStack();
 		
 		// fill the hyperstack using z-positions given by getStackIndex. Slices are 1-based 
@@ -545,6 +536,18 @@ public class Deconvolve_Image_Utils {
 			for (int k = 0; k < height; k++)
 				for (int l = 0; l < width; l++)
 					stack.setVoxel(l, k, testImage.getStackIndex(1, j, 1)-1, (double)testMat[j-1][k][l]);
+		
+		// convert image stack to correct architecture with scaling
+		if (impType != "GRAY32") {
+			ImageProcessor ip;
+			for (int i = 1; i <= testImage.getStackSize(); i++) {
+				ip = testImage.getStack().getProcessor(i);
+				if (impType == "GRAY16")
+					ip = ip.convertToShortProcessor(true);
+				else
+					ip = ip.convertToByte(true);
+			}
+		}
 
 		return testImage;
 	}
@@ -555,16 +558,8 @@ public class Deconvolve_Image_Utils {
 		int width = testMat[0][0][0].length;
 		int height = testMat[0][0].length;
 		int slices = testMat[0].length;
-		int bitdepth = 24;
 		
-		if (impType == "GRAY32")
-			bitdepth = 32;
-		if (impType == "GRAY16") 
-			bitdepth = 16;
-		if (impType == "GRAY8")
-			bitdepth = 8;
-		
-		ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, bitdepth);
+		ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, 32);
 		ImageStack stack = testImage.getStack();
 		
 		for (int i = 1; i <= frames; i++) 
@@ -572,6 +567,18 @@ public class Deconvolve_Image_Utils {
 				for (int k = 0; k < height; k++)
 					for (int l = 0; l < width; l++)
 						stack.setVoxel(l, k, testImage.getStackIndex(1, j, i)-1, (double)testMat[i-1][j-1][k][l]);
+		
+		// convert image stack to correct architecture with scaling
+		if (impType != "GRAY32") {
+			ImageProcessor ip;
+			for (int i = 1; i <= testImage.getStackSize(); i++) {
+				ip = testImage.getStack().getProcessor(i);
+				if (impType == "GRAY16")
+					ip = ip.convertToShortProcessor(true);
+				else
+					ip = ip.convertToByte(true);
+			}
+		}
 
 		return testImage;
 	}
