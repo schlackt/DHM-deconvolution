@@ -404,6 +404,30 @@ public class Deconvolve_Image_Utils {
 		return ret;
 	}
 	
+	public float[][][] increment(float[][][] mat, float inc) {
+		int slices = mat.length;
+		int height = mat[0].length;
+		int width = mat[0][0].length;
+		float[][][] ret = new float[slices][height][width];
+		
+		for (int i = 0; i < slices; i++)
+			for (int j = 0; j < height; j++)
+				for (int k = 0; k < width; k++)
+					ret[i][j][k] = mat[i][j][k] + inc;
+		
+		return ret;
+	}
+	
+	public float[][][][] increment(float[][][][] mat, float inc) {
+		int frames = mat.length;
+		float[][][][] ret = new float[frames][mat[0].length][mat[0][0].length][mat[0][0][0].length];
+		
+		for (int i = 0; i < frames; i++)
+			ret[i] = increment(mat[i], inc);
+		
+		return ret;
+	}
+	
 	// adds inc to each real element of a complex 3D matrix
 	public float[][][] incrementComplex(float[][][] mat, float inc) {
 		int slices = mat.length;
@@ -428,11 +452,11 @@ public class Deconvolve_Image_Utils {
 		int width = (int)(mat1[0][0].length / 2);
 		float[][][] retMat = new float[slices][height][2*width];
 		
-		float c; //Re of mat1 element
-		float d; //Im of mat1 element
-		float e; //Re of mat2 element
-		float f; //Im of mat2 element
-		float[] result;
+		float c; // Re of mat1 element
+		float d; // Im of mat1 element
+		float e; // Re of mat2 element
+		float f; // Im of mat2 element
+		float[] result; // {Re, Im}
 		
 		for (int i = 0; i < slices; i++)
 			for (int j = 0; j < height; j++)
@@ -466,6 +490,7 @@ public class Deconvolve_Image_Utils {
 						retMat[i][j][2*k + 1] = result[1];
 					}
 				}
+		
 		return retMat;
 	}
 	
@@ -495,9 +520,8 @@ public class Deconvolve_Image_Utils {
 		
 		for (int i = 0; i < slices; i++)
 			for (int j = 0; j < height; j++)
-				for (int k = 0; k < width; k++) {
+				for (int k = 0; k < width; k++)
 					retMat[i][j][k] = scale * mat[i][j][k];
-				}
 		
 		return retMat;
 	}

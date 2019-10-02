@@ -275,7 +275,11 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			else if (decon_choice == "Complex (Polar)") {
 				IJ.saveAsTiff(tempImg, save_path + "Amplitude" + divisor + Integer.toString(i) + ".tif");
 				
-				tempImg = diu.reassign(diu.getPhaseMat(imgMat[i]), choice, Integer.toString(i));
+				if (choice == "GRAY32")
+					tempImg = diu.reassign(diu.getPhaseMat(imgMat[i]), choice, Integer.toString(i));
+				else
+					diu.reassign(diu.scaleMat(diu.increment(diu.getPhaseMat(imgMat[i]), (float)Math.PI), (float) (255 / 2 / Math.PI)), choice, Integer.toString(i));
+				
 				tempImg.setCalibration(cal);
 				IJ.saveAsTiff(tempImg, save_path + "Phase" + divisor + Integer.toString(i) + ".tif");
 			}
@@ -332,7 +336,11 @@ public class Deconvolve_Iterative implements PlugInFilter {
 				tempImg.setCalibration(cal);
 				IJ.saveAsTiff(tempImg, save_path + "Amplitude" + divisor + Integer.toString(i) + ".tif");
 				
-				tempImg = diu.reassign(diu.getPhaseMat(imgMat), choice, Integer.toString(i));
+				if (choice == "GRAY32")
+					tempImg = diu.reassign(diu.getPhaseMat(imgMat), choice, Integer.toString(i));
+				else
+					tempImg = diu.reassign(diu.scaleMat(diu.increment(diu.getPhaseMat(imgMat), (float)Math.PI), (float) (255 / 2 / Math.PI)), choice, Integer.toString(i));
+				
 				tempImg.setCalibration(cal);
 				IJ.saveAsTiff(tempImg, save_path + "Phase" + divisor + Integer.toString(i) + ".tif");
 				tempImg.close();
@@ -385,7 +393,12 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			ampImage.setCalibration(cal);
 			ampImage.show();
 			
-			ImagePlus phaseImage = diu.reassign(diu.getPhaseMat(imgMat), choice, "Phase");
+			ImagePlus phaseImage;
+			if (choice == "GRAY32")
+				phaseImage = diu.reassign(diu.getPhaseMat(imgMat), choice, "Phase");
+			else
+				phaseImage = diu.reassign(diu.scaleMat(diu.increment(diu.getPhaseMat(imgMat), (float)Math.PI), (float) (255 / 2 / Math.PI)), choice, "Phase");
+			
 			phaseImage.setCalibration(cal);
 			phaseImage.show();
 		}
@@ -446,9 +459,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 				deconvolve(diu.toFFTformRect(ampMat, phaseMat), diu.toFFTformRect(psfMat, psfPhaseMat));
 				objMat[i] = diu.getReMat(imgMat)[0];
 				imgMatPhase[i] = diu.getImMat(imgMat)[0];
-			}
-		
-				
+			}		
 		}
 		
 		if (decon_choice == "Standard") {
@@ -462,7 +473,12 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			amp.setCalibration(cal);
 			amp.show();
 			
-			ImagePlus phase = diu.reassign(imgMatPhase, choice, "Phase");
+			ImagePlus phase;
+			if (choice == "GRAY32")
+				phase = diu.reassign(imgMatPhase, choice, "Phase");
+			else
+				phase = diu.reassign(diu.scaleMat(diu.increment(imgMatPhase, (float)Math.PI), (float) (255 / 2 / Math.PI)), choice, "Phase");
+			
 			phase.setCalibration(cal);
 			phase.show();
 		}
