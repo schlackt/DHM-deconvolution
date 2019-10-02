@@ -14,6 +14,7 @@ public class Wiener_Utils {
 	private int slices;
 	private int frames;
 	private float[][][] psfComplex;
+	private boolean get_intensity;
 	
 	public float[][][][] imgComplex;
 	public float[][][][] imgPhase;
@@ -21,12 +22,13 @@ public class Wiener_Utils {
 	public float error;
 	
 	// initialize object
-	public Wiener_Utils(int i_width, int i_height, int i_slices, int i_frames, float i_beta) {
+	public Wiener_Utils(int i_width, int i_height, int i_slices, int i_frames, float i_beta, boolean intensity) {
 		width = i_width;
 		height = i_height;
 		slices = i_slices;
 		frames = i_frames;
 		beta = i_beta;
+		get_intensity = intensity;
 		fft3D = new FloatFFT_3D((long)slices, (long)height, (long)width);
 		imgComplex = new float[frames][slices][height][width];
 	}
@@ -36,12 +38,16 @@ public class Wiener_Utils {
 		// put image into FFT form and transform
 		for (int i = 0; i < frames; i++) {
 			imgComplex[i] = diu.toFFTform(imgMat[i]);
+			if (get_intensity)
+				imgComplex[i] = diu.matrixOperations(imgComplex[i], imgComplex[i], "multiply");
 			fft3D.complexForward(imgComplex[i]);
 		}
 			
 		// do the same with PSF
 		psfComplex = diu.scaleMat(psfMat, scale);
 		psfComplex = diu.toFFTform(psfComplex);
+		if (get_intensity)
+			psfComplex = diu.matrixOperations(psfComplex, psfComplex, "multiply");
 		fft3D.complexForward(psfComplex);	
 		float[][][] psfConj = diu.complexConj(psfComplex);
 		
@@ -77,6 +83,9 @@ public class Wiener_Utils {
 			else
 				imgComplex[i] = diu.toFFTformRect(imgAmpMat[i], imgPhaseMat[i]);
 			
+			if (get_intensity)
+				imgComplex[i] = diu.matrixOperations(imgComplex[i], diu.complexConj(imgComplex[i]), "multiply");
+			
 			fft3D.complexForward(imgComplex[i]);
 		}
 		
@@ -85,6 +94,9 @@ public class Wiener_Utils {
 			psfComplex = diu.toFFTform(psfAmpMat, psfPhaseMat);
 		else
 			psfComplex = diu.toFFTformRect(psfAmpMat, psfPhaseMat);
+		
+		if (get_intensity)
+			psfComplex = diu.matrixOperations(psfComplex, diu.complexConj(psfComplex), "multiply");
 		
 		fft3D.complexForward(psfComplex);	
 		float[][][] psfConj = diu.complexConj(psfComplex);

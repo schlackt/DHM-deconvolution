@@ -42,6 +42,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 	private boolean get_error;
 	private boolean decon_hyper;
 	private boolean save_files;
+	private boolean intensity;
 	private float SNR;
 	private float[][][][] ampMat;
 	private float[][][][] phaseMat;
@@ -86,6 +87,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		gd.addChoice("Deconvolution Style: ", decon_choices, "Standard");
 		gd.addCheckbox("Get SNR?", false);
 		gd.addCheckbox("Normalize PSF?", true);
+		gd.addCheckbox("Use Intensity Maps?", false);
 		gd.addCheckbox("Display Error?", true);
 		gd.addCheckbox("Deconvolve from Hyperstack?", true);
 		gd.addCheckbox("Save by Frame?", false);
@@ -99,6 +101,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		decon_choice = gd.getNextChoice();
 		getSNR = gd.getNextBoolean();
 		normalizePSF = gd.getNextBoolean();
+		intensity = gd.getNextBoolean();
 		get_error = gd.getNextBoolean();
 		decon_hyper = gd.getNextBoolean();
 		save_files = gd.getNextBoolean();
@@ -243,7 +246,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 	// save frames from a hyperstack
 	public void save_from_hyperstack() {
 		ampMat = diu.getMatrix4D(image);
-		Wiener_Utils wu = new Wiener_Utils(width, height, slices, frames, 1/SNR);
+		Wiener_Utils wu = new Wiener_Utils(width, height, slices, frames, 1/SNR, intensity);
 		IJ.showStatus("Deconvolving hyperstack...");
 		
 		// deconvolve using proper strategy
@@ -285,7 +288,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		if (decon_choice != "Standard")
 			phaseMat = new float[1][slices][height][width];
 		
-		Wiener_Utils wu = new Wiener_Utils(width, height, slices, 1, 1/SNR);
+		Wiener_Utils wu = new Wiener_Utils(width, height, slices, 1, 1/SNR, intensity);
 		
 		// loop over images in stack
 		for (int i = 0; i < stack_list.length; i++) {
@@ -343,7 +346,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 	// open a deconvolved hyperstack from a hyperstack
 	public void show_from_hyperstack() {
 		ampMat = diu.getMatrix4D(image);
-		Wiener_Utils wu = new Wiener_Utils(width, height, slices, frames, 1/SNR);
+		Wiener_Utils wu = new Wiener_Utils(width, height, slices, frames, 1/SNR, intensity);
 		IJ.showStatus("Deconvolving hyperstack...");
 		
 		if (decon_choice == "Standard") {
@@ -396,7 +399,7 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 			phaseMat = new float[1][slices][height][width];
 		}
 		
-		Wiener_Utils wu = new Wiener_Utils(width, height, slices, 1, 1/SNR);
+		Wiener_Utils wu = new Wiener_Utils(width, height, slices, 1, 1/SNR, intensity);
 		
 		// loop through frames in folder and deconvolve
 		for (int i = 0; i < stack_list.length; i++) {
