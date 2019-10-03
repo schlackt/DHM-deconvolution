@@ -22,6 +22,7 @@ public class Get_Error implements PlugInFilter {
 	protected ImagePlus origImage;
 	private String path;
 	private String style;
+	private boolean intensity;
 	
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
 
@@ -48,12 +49,15 @@ public class Get_Error implements PlugInFilter {
 		String[] decon_choices = {"Standard", "Complex (Polar)", "Complex (Rectangular)"};
 		GenericDialog gd = new GenericDialog("Error Setup");
 		gd.addChoice("Deconvolution Style: ", decon_choices, "Standard");
+		gd.addCheckbox("Intensity Error?", false);
 		
 		gd.showDialog();
 		if (gd.wasCanceled())
 			return false;
 		
 		style = gd.getNextChoice();
+		intensity = gd.getNextBoolean();
+		
 		return true;
 	}
 	
@@ -77,8 +81,16 @@ public class Get_Error implements PlugInFilter {
 		float[][][] psfMat = diu.getMatrix3D(PSF);
 		
 		double err = 0;
-		if (style == "Standard")
-			err = diu.getError(diu.toFFTform(imgMat), diu.toFFTform(imgMatOld), diu.toFFTform(psfMat));
+		if (style == "Standard") {
+			psfMat = diu.toFFTform(psfMat);
+			imgMatOld = diu.toFFTform(imgMatOld);
+			if (intensity) {
+				psfMat = diu.matrixOperations(psfMat, diu.complexConj(psfMat), "multiply");
+				for (int i = 0; i < imgMatOld.length; i++)
+					imgMatOld[i] = diu.matrixOperations(imgMatOld[i], diu.complexConj(imgMatOld[i]), "multiply");
+			}
+			err = diu.getError(diu.toFFTform(imgMat), imgMatOld, psfMat);
+		}
 		else {
 			path = diu.getPath("Select the deconvolved imaginary/phase image:");
 			origImage = IJ.openImage(path);
@@ -92,10 +104,25 @@ public class Get_Error implements PlugInFilter {
 			origImage = IJ.openImage(path);
 			float[][][][] imgMatOldPhase = diu.getMatrix4D(origImage);
 			
-			if (style == "Complex (Polar)")
-				err = diu.getError(diu.toFFTform(imgMat, imgMatPhase), diu.toFFTform(imgMatOld, imgMatOldPhase), diu.toFFTform(psfMat, psfPhase));
-			else
-				err = diu.getError(diu.toFFTformRect(imgMat, imgMatPhase), diu.toFFTformRect(imgMatOld, imgMatOldPhase), diu.toFFTformRect(psfMat, psfPhase));
+			if (style == "Complex (Polar)") {
+				imgMat = diu.toFFTform(imgMat, imgMatPhase);
+				imgMatOld = diu.toFFTform(imgMatOld, imgMatOldPhase);
+				psfMat = diu.toFFTform(psfMat, psfPhase);
+			}
+			else {
+				imgMat = diu.toFFTformRect(imgMat, imgMatPhase);
+				imgMatOld = diu.toFFTformRect(imgMatOld, imgMatOldPhase);
+				psfMat = diu.toFFTformRect(psfMat, psfPhase);
+			}
+			
+			if (intensity) {
+				for (int i = 0; i < imgMatOld.length; i ++)
+					imgMatOld[i] = diu.matrixOperations(imgMatOld[i], diu.complexConj(imgMatOld[i]), "multiply");
+				
+				psfMat = diu.matrixOperations(psfMat, diu.complexConj(psfMat), "multiply");
+			}
+			
+			err = diu.getError(imgMat, imgMatOld, psfMat);	
 		}
 		DecimalFormat errFormat = new DecimalFormat("###0.00");
 		IJ.showMessage("Error: " + errFormat.format(err * 100) + "%");
