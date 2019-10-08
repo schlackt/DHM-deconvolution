@@ -12,6 +12,7 @@ import java.io.File;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.gui.Plot;
 import ij.measure.Calibration;
@@ -19,22 +20,26 @@ import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
 public class Deconvolve_Iterative implements PlugInFilter {
-	protected ImagePlus image;
-	protected ImagePlus PSF;
-	protected ImagePlus phaseImage;
-
+	protected ImagePlus image_amp;
+	protected ImagePlus PSF_amp;
+	protected ImagePlus image_phase;
+	protected ImagePlus PSF_phase;
+	
 	private int width;
 	private int height;
 	private int slices;
 	private int frames;
 	private int iterations;
-	private String path;
 	private String choice;
 	private String divisor;
 	private String decon_choice;
 	private String stack_path;
 	private String stack_path_phase;
 	private String save_path;
+	private String amp_selection;
+	private String phase_selection;
+	private String PSF_amp_selection;
+	private String PSF_phase_selection;
 	private File stacks;
 	private Calibration cal;
 	private String[] stack_list;
@@ -64,21 +69,13 @@ public class Deconvolve_Iterative implements PlugInFilter {
 			return DONE;
 		}
 
-		image = imp;
 		return DOES_8G | DOES_16 | DOES_32;
 	}
 
 	@Override
-	public void run(ImageProcessor ip) {
-		// get dimensions of image
-		width = ip.getWidth();
-		height = ip.getHeight();
-		slices = image.getNSlices();
-		frames = image.getNFrames();
-		
+	public void run(ImageProcessor ip) {		
 		if (showDialog()) {
 			process(ip);
-			image.updateAndDraw();
 		}
 	}
 	
@@ -86,15 +83,20 @@ public class Deconvolve_Iterative implements PlugInFilter {
 	private boolean showDialog() {
 		String[] choices = {"8-bit", "16-bit", "32-bit"};
 		String[] decon_choices = {"Standard", "Complex (Polar)", "Complex (Rectangular)"};
+		String[] image_list = diu.imageList();
 		GenericDialog gd = new GenericDialog("Deconvolution Setup");
-		gd.addChoice("Output Image:", choices, "32-bit");
-		gd.addChoice("Deconvolution Style: ", decon_choices, "Standard");
+		gd.addChoice("Output image:", choices, "32-bit");
+		gd.addChoice("Deconvolution style: ", decon_choices, "Standard");
+		gd.addChoice("Amplitude/Real image: ", image_list, image_list[image_list.length - 1]);
+		gd.addChoice("Phase/Imaginary image: ", image_list, image_list[image_list.length - 1]);
+		gd.addChoice("PSF amplitude/real image: ", image_list, image_list[image_list.length - 1]);
+		gd.addChoice("PSF phase/imaginary image: ", image_list, image_list[image_list.length - 1]);
 		gd.addNumericField("Iterations:", 3, 0);
 		gd.addCheckbox("Get SNR?", false);
 		gd.addCheckbox("Normalize PSF?", true);
-		gd.addCheckbox("Deconvolve from Hyperstack?", true);
-		gd.addCheckbox("Save by Frame?", false);
-		gd.addCheckbox("Plot Errors?", false);
+		gd.addCheckbox("Deconvolve from files?", false);
+		gd.addCheckbox("Save by frame?", false);
+		gd.addCheckbox("Plot errors?", false);
 
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -103,10 +105,14 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		// get entered values
 		choice = gd.getNextChoice();
 		decon_choice = gd.getNextChoice();
+		amp_selection = gd.getNextChoice();
+		phase_selection = gd.getNextChoice();
+		PSF_amp_selection = gd.getNextChoice();
+		PSF_phase_selection = gd.getNextChoice();
 		iterations = (int) gd.getNextNumber();
 		getSNR = gd.getNextBoolean();
 		normalizePSF = gd.getNextBoolean();
-		decon_hyper = gd.getNextBoolean();
+		decon_hyper = !gd.getNextBoolean();
 		save_files = gd.getNextBoolean();
 		plot_error = gd.getNextBoolean();
 		
@@ -191,36 +197,32 @@ public class Deconvolve_Iterative implements PlugInFilter {
 	}
 	
 	public void process(ImageProcessor ip) {
-		// get the PSF file path or exit if the user presses "Cancel"
-		path = diu.getPath("Select the PSF real or amplitude image:");
-		if (path == null) {
-			return;
-		}
-		PSF = IJ.openImage(path);
-		width = PSF.getProcessor().getWidth();
-		height = PSF.getProcessor().getHeight();
-		slices = PSF.getNSlices();
+		image_amp = WindowManager.getImage(diu.getImageTitle(amp_selection));
+		frames = image_amp.getNFrames();
+		
+		PSF_amp = WindowManager.getImage(diu.getImageTitle(PSF_amp_selection));
+		width = PSF_amp.getProcessor().getWidth();
+		height = PSF_amp.getProcessor().getHeight();
+		slices = PSF_amp.getNSlices();
 		
 		if (getSNR) {
 			// get signal-to-noise through user input
 			Noise_NP nnp = new Noise_NP();
-			float noiseDev = nnp.getNoise(image);
-			float signal = nnp.getSignal(image);
+			float noiseDev = nnp.getNoise(image_amp);
+			float signal = nnp.getSignal(image_amp);
 			SNR = signal / noiseDev;
 		}
 		
 		IJ.showStatus("Preprocessing...");
 		
 		// convert image stacks to matrices
-		psfMat = diu.getMatrix3D(PSF);
-		cal = PSF.getCalibration();
-		PSF.close();
+		psfMat = diu.getMatrix3D(PSF_amp);
+		cal = PSF_amp.getCalibration();
 		
 		// get imaginary/phase component of the PSF
 		if (decon_choice != "Standard") {
-			path = diu.getPath("Select the PSF imaginary or phase image:");
-			PSF = IJ.openImage(path);
-			psfPhaseMat = diu.getMatrix3D(PSF);
+			PSF_phase = WindowManager.getImage(diu.getImageTitle(PSF_phase_selection));
+			psfPhaseMat = diu.getMatrix3D(PSF_phase);
 		}
 		
 		// normalize PSF appropriately
@@ -233,9 +235,8 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		if (decon_hyper) {
 			// get imaginary/phase component of the original image
 			if (decon_choice != "Standard") {
-				path = diu.getPath("Select the imaginary or phase image:");
-				ImagePlus temp = IJ.openImage(path);
-				phaseMat = diu.getMatrix4D(temp);
+				image_phase = WindowManager.getImage(diu.getImageTitle(phase_selection));
+				phaseMat = diu.getMatrix4D(image_phase);
 			}
 			
 			if (save_files)
@@ -253,7 +254,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 	
 	// save deconvolved images by frame from a hyperstack
 	public void save_from_hyperstack() {
-		ampMat = diu.getMatrix4D(image);
+		ampMat = diu.getMatrix4D(image_amp);
 		IJ.showStatus("Deconvolving hyperstack...");
 		
 		// deconvolve using the appropriate FFT form
@@ -372,7 +373,7 @@ public class Deconvolve_Iterative implements PlugInFilter {
 	
 	// open deconvolved images from currently open hyperstack
 	public void show_from_hyperstack() {
-		ampMat = diu.getMatrix4D(image);
+		ampMat = diu.getMatrix4D(image_amp);
 		IJ.showStatus("Deconvolving hyperstack...");
 		
 		if (decon_choice == "Standard") {

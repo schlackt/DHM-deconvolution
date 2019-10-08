@@ -10,6 +10,7 @@ package edu.pdx.imagej.deconv;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
@@ -22,11 +23,14 @@ import ij.process.ImageProcessor;
  * @author Trevor Schlack
  */
 public class Make_PSF implements PlugInFilter {
-	protected ImagePlus image;
+	protected ImagePlus image_ref;
 
 	// image property members
 	private int width;
 	private int height;
+	private double pointRad;
+	private boolean expVals;
+	private String ref_selection;
 	private float max = 0;
 	private float min = 0;
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
@@ -37,36 +41,44 @@ public class Make_PSF implements PlugInFilter {
 			showAbout();
 			return DONE;
 		}
-
-		image = imp;
 		return DOES_8G | DOES_16 | DOES_32 | DOES_RGB;
 	}
 
 	@Override
-	public void run(ImageProcessor ip) {
-		// get dimensions of image
-		width = ip.getWidth();
-		height = ip.getHeight();
-		
-		max = (float)ip.getMax();
-		min = (float)ip.getMin();
-		
-		process(ip);
+	public void run(ImageProcessor ip) {		
+		if (showDialog())
+			process(ip);
 	}
 	
-	public void process(ImageProcessor ip) {
-		float[][][] pointImageMat = new float[1][height][width];
-		boolean expVals = false;
-		int pointRad = 1;
-		int centerX = (width / 2) - 1;
-		int centerY = (height / 2) - 1;
+	public boolean showDialog() {
+		String[] image_list = diu.imageList();
 		GenericDialog gd = new GenericDialog("PSF Setup");
+		gd.addChoice("Reference image: ", image_list, image_list[0]);
 		gd.addNumericField("Point radius (px): ", 1, 0);
 		gd.addCheckbox("Use experimental values?", expVals);
 		gd.showDialog();
 		
-		pointRad = (int)gd.getNextNumber();
+
+		if (gd.wasCanceled())
+			return false;
+		
+		ref_selection = gd.getNextChoice();
+		pointRad = gd.getNextNumber();
 		expVals = gd.getNextBoolean();
+		
+		image_ref = WindowManager.getImage(diu.getImageTitle(ref_selection));
+		width = image_ref.getProcessor().getWidth();
+		height = image_ref.getProcessor().getHeight();
+		min = (float) image_ref.getProcessor().getMin();
+		max = (float) image_ref.getProcessor().getMax();
+		
+		return true;
+	}
+	
+	public void process(ImageProcessor ip) {
+		float[][][] pointImageMat = new float[1][height][width];
+		int centerX = (width / 2) - 1;
+		int centerY = (height / 2) - 1;
 		
 		for (int i = 0; i < height; i++)
 			for (int j = 0; j < width; j++) {

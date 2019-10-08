@@ -10,14 +10,16 @@ package edu.pdx.imagej.deconv;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
 public class Image_Converter implements PlugInFilter {
-	protected ImagePlus image;
-	protected ImagePlus imagePhase;
-	private String path;
+	protected ImagePlus image_amp;
+	protected ImagePlus image_phase;
+	private String amp_selection;
+	private String phase_selection;
 	private String style;
 	
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
@@ -29,7 +31,6 @@ public class Image_Converter implements PlugInFilter {
 			return DONE;
 		}
 
-		image = imp;
 		return DOES_8G | DOES_16 | DOES_32;
 	}
 
@@ -37,35 +38,36 @@ public class Image_Converter implements PlugInFilter {
 	public void run(ImageProcessor ip) {
 		if (showDialog()) {
 			process(ip);
-			image.updateAndDraw();
 		}
 	}
 	
 	private boolean showDialog() {
 		String[] conv_choices = {"Polar -> Rectangular", "Rectangular -> Polar"};
+		String[] image_list = diu.imageList();
 		GenericDialog gd = new GenericDialog("Conversion Setup");
 		gd.addChoice("Deconvolution Style: ", conv_choices, "Rectangular -> Polar");
+		gd.addChoice("Amplitude/Real image: ", image_list, image_list[image_list.length - 1]);
+		gd.addChoice("Phase/Imaginary image: ", image_list, image_list[image_list.length - 1]);
 		
 		gd.showDialog();
 		if (gd.wasCanceled())
 			return false;
 		
 		style = gd.getNextChoice();
+		amp_selection = gd.getNextChoice();
+		phase_selection = gd.getNextChoice();
+		
 		return true;
 	}
 	
 	public void process(ImageProcessor ip) {
-		// get the PSF file path or exit if the user presses "Cancel"
-		path = diu.getPath("Select the imaginary/phase image:");
-		if (path == null) {
-			return;
-		}
-		imagePhase = IJ.openImage(path);
+		image_amp = WindowManager.getImage(diu.getImageTitle(amp_selection));
+		image_phase = WindowManager.getImage(diu.getImageTitle(phase_selection));
 		
 		
 		// convert image stacks to matrices
-		float[][][][] imgMat = diu.getMatrix4D(image);
-		float[][][][] imgMatPhase = diu.getMatrix4D(imagePhase);
+		float[][][][] imgMat = diu.getMatrix4D(image_amp);
+		float[][][][] imgMatPhase = diu.getMatrix4D(image_phase);
 		
 
 		if (style == "Rectangular -> Polar") {

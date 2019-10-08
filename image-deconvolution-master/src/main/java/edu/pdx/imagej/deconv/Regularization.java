@@ -13,6 +13,7 @@ import java.util.ArrayList;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.gui.Plot;
 import ij.gui.PlotWindow;
@@ -21,8 +22,10 @@ import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
 public class Regularization implements PlugInFilter {
-	protected ImagePlus image;
-	protected ImagePlus PSF;
+	protected ImagePlus image_amp;
+	protected ImagePlus PSF_amp;
+	protected ImagePlus image_phase;
+	protected ImagePlus PSF_phase;
 
 	private int tildeCount = 2;
 	private float smooth;
@@ -30,13 +33,16 @@ public class Regularization implements PlugInFilter {
 	private int iterations;
 	private float lateral_spacing;
 	private float axial_spacing;
-	private String path;
 	private String choice;
 	private String stack_path;
 	private String stack_path_phase;
 	private String save_path;
 	private String decon_choice;
 	private String divisor;
+	private String amp_selection;
+	private String phase_selection;
+	private String PSF_amp_selection;
+	private String PSF_phase_selection;
 	private File stacks;
 	private String[] stack_list;
 	private String[] stack_list_phase;
@@ -57,7 +63,6 @@ public class Regularization implements PlugInFilter {
 			return DONE;
 		}
 
-		image = imp;
 		return DOES_8G | DOES_16 | DOES_32;
 	}
 
@@ -65,7 +70,6 @@ public class Regularization implements PlugInFilter {
 	public void run(ImageProcessor ip) {		
 		if (showDialog()) {
 			process(ip);
-			image.updateAndDraw();
 		}
 	}
 	
@@ -73,17 +77,22 @@ public class Regularization implements PlugInFilter {
 	private boolean showDialog() {
 		String[] choices = {"8-bit", "16-bit", "32-bit"};
 		String[] decon_choices = {"Standard", "Complex (Polar)", "Complex (Rectangular)"};
+		String[] image_list = diu.imageList();
 		GenericDialog gd = new GenericDialog("Deconvolution Setup");
 		gd.addChoice("Output Image:", choices, "32-bit");
 		gd.addChoice("Deconvolution Style: ", decon_choices, "Standard");
-		gd.addNumericField("Smoothness Factor: ", 0.01, 2);
-		gd.addNumericField("Nonlinearity Factor: ", 0.001, 3);
+		gd.addChoice("Amplitude/Real image: ", image_list, image_list[image_list.length - 1]);
+		gd.addChoice("Phase/Imaginary image: ", image_list, image_list[image_list.length - 1]);
+		gd.addChoice("PSF amplitude/real image: ", image_list, image_list[image_list.length - 1]);
+		gd.addChoice("PSF phase/imaginary image: ", image_list, image_list[image_list.length - 1]);
+		gd.addNumericField("Smoothness Factor: ", 2, 0);
+		gd.addNumericField("Nonlinearity Factor: ", 0.1, 1);
 		gd.addNumericField("# Iterations: ", 3, 0);
 		gd.addNumericField("Lateral Spacing (o.u.): ", 0.178223, 3);
 		gd.addNumericField("Axial Spacing (o.u.): ", 10, 0);
 		gd.addCheckbox("Normalize PSF?", true);
-		gd.addCheckbox("Deconvolve from Hyperstack?", true);
-		gd.addCheckbox("Save by Frames?", false);
+		gd.addCheckbox("Deconvolve from files?", false);
+		gd.addCheckbox("Save by frames?", false);
 
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -92,13 +101,17 @@ public class Regularization implements PlugInFilter {
 		// get entered values
 		choice = gd.getNextChoice();
 		decon_choice = gd.getNextChoice();
+		amp_selection = gd.getNextChoice();
+		phase_selection = gd.getNextChoice();
+		PSF_amp_selection = gd.getNextChoice();
+		PSF_phase_selection = gd.getNextChoice();
 		smooth = (float) gd.getNextNumber();
 		nonlinearity = (float) gd.getNextNumber();
 		iterations = (int) gd.getNextNumber();
 		lateral_spacing = (float) gd.getNextNumber();
 		axial_spacing = (float) gd.getNextNumber();
 		normalizePSF = gd.getNextBoolean();
-		decon_hyper = gd.getNextBoolean();
+		decon_hyper = !gd.getNextBoolean();
 		save_files = gd.getNextBoolean();
 		
 		if (choice == "8-bit")
@@ -165,21 +178,16 @@ public class Regularization implements PlugInFilter {
 	}
 	
 	public void process(ImageProcessor ip) {
-		// get the PSF file path or exit if the user presses "Cancel"
-		path = diu.getPath("Select the PSF real or amplitude image:");
-		if (path == null) {
-			return;
-		}
-		PSF = IJ.openImage(path);
+		image_amp = WindowManager.getImage(diu.getImageTitle(amp_selection));
+		PSF_amp = WindowManager.getImage(diu.getImageTitle(PSF_amp_selection));
 
-		float[][][] psfMat = diu.getMatrix3D(PSF);
-		Calibration cal = PSF.getCalibration();
+		float[][][] psfMat = diu.getMatrix3D(PSF_amp);
+		Calibration cal = PSF_amp.getCalibration();
 		
 		// get imaginary/phase component of the PSF
 		if (decon_choice != "Standard") {
-			path = diu.getPath("Select the PSF imaginary or phase image:");
-			PSF = IJ.openImage(path);
-			psfPhaseMat = diu.getMatrix3D(PSF);
+			PSF_phase = WindowManager.getImage(diu.getImageTitle(PSF_phase_selection));
+			psfPhaseMat = diu.getMatrix3D(PSF_phase);
 		}
 		
 		// normalize PSF appropriately
@@ -187,8 +195,6 @@ public class Regularization implements PlugInFilter {
 			diu.normalize(psfMat);
 		if (normalizePSF && decon_choice == "Complex (Rectangular)")
 			diu.normalize(psfMat, psfPhaseMat);
-		
-		PSF.close();
 		
 		// put PSF into correct FFT form
 		if (decon_choice == "Standard")
@@ -203,7 +209,7 @@ public class Regularization implements PlugInFilter {
 		ImagePlus tempImg = IJ.createHyperStack("blank", 1, 1, 1, 1, 1, 32);
 		// convert image stacks to matrices
 		if (decon_hyper) {
-			ampMat = diu.getMatrix4D(image);
+			ampMat = diu.getMatrix4D(image_amp);
 			for (int i = 0; i < ampMat.length; i++)
 				diu.linearShift(ampMat[i], 0, 1);
 		}
@@ -234,9 +240,8 @@ public class Regularization implements PlugInFilter {
 				if (decon_choice == "Standard")
 					ampMat = diu.toFFTform(ampMat);
 				else {
-					path = diu.getPath("Select the imaginary or phase image:");
-					tempImg = IJ.openImage(path);
-					phaseMat = diu.getMatrix4D(tempImg);
+					image_phase = WindowManager.getImage(diu.getImageTitle(phase_selection));
+					phaseMat = diu.getMatrix4D(image_phase);
 					
 					if (decon_choice == "Complex (Polar)")
 						ampMat = diu.toFFTform(ampMat, phaseMat);

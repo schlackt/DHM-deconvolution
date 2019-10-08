@@ -3,6 +3,7 @@ package edu.pdx.imagej.deconv;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
+import ij.WindowManager;
 import ij.io.DirectoryChooser;
 import ij.io.OpenDialog;
 import ij.process.ImageProcessor;
@@ -817,5 +818,28 @@ public class Deconvolve_Image_Utils {
 				}
 		
 		return ret;
+	}
+	
+	// generate ID and title list of open images
+	public String[] imageList() {
+		String[] titles;
+		String[] formatted;
+		
+		titles = WindowManager.getImageTitles();
+		formatted = new String[titles.length + 1];
+		
+		for (int i = 0; i < titles.length; i++)
+			formatted[i] = Integer.toString(i + 1) + ": " + titles[i];
+		
+		formatted[titles.length] = "<none>";
+		
+		return formatted;
+	}
+	
+	// gets ID from strings in the style generated above
+	public String getImageTitle(String selection) {
+		String after_colon = selection.split(": ")[1];
+		
+		return after_colon;
 	}
 }
