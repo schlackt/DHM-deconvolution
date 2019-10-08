@@ -11,6 +11,7 @@ package edu.pdx.imagej.deconv;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
+import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
@@ -23,7 +24,7 @@ import java.text.DecimalFormat;
 //import java.util.Arrays;
 
 public class Make_Hyperstack implements PlugInFilter {
-	protected ImagePlus image;
+	protected ImagePlus image_ref;
 
 	// image property members
 	private int width;
@@ -42,6 +43,7 @@ public class Make_Hyperstack implements PlugInFilter {
 	private String divisor;
 	private String prefix = "";
 	private String suffix = "";
+	private String ref_selection;
 	private String save_path;
 	private boolean save_frames;
 	private boolean split_stack;
@@ -54,21 +56,13 @@ public class Make_Hyperstack implements PlugInFilter {
 			return DONE;
 		}
 
-		image = imp;
 		return DOES_8G | DOES_16 | DOES_32 | DOES_RGB;
 	}
 
 	@Override
-	public void run(ImageProcessor ip) {
-		// get dimensions of image
-		width = ip.getWidth();
-		height = ip.getHeight();
-		slices = image.getNSlices();
-		frames = image.getNFrames();
-		
+	public void run(ImageProcessor ip) {		
 		if (showDialog()) {
 			process(ip);
-			image.updateAndDraw();
 		}
 	}
 	
@@ -76,16 +70,18 @@ public class Make_Hyperstack implements PlugInFilter {
 	private boolean showDialog() {
 		String[] choices = {"8-bit", "16-bit", "32-bit"};
 		String[] prefixChoices = {"Default (e.g. \"00001.tif\")", "Prefix (e.g. \"xxx00001.tif\")", "Suffix (e.g. \"00001xxx.tif\")"};
+		String[] image_list = diu.imageList();
 		GenericDialog gd = new GenericDialog("Deconvolution Setup");
+		gd.addChoice("Reference image: ", image_list, image_list[0]);
 		gd.addNumericField("Initial z (o.u.): ", -200, 0);
 		gd.addNumericField("Final z (o.u.): ", 200, 0);
-		gd.addNumericField("Axial Spacing (o.u.): ", 10, 0);
-		gd.addNumericField("Initial Frame: ", 1, 0);
-		gd.addNumericField("Final Frame: ", 10, 0);
+		gd.addNumericField("Axial spacing (o.u.): ", 10, 0);
+		gd.addNumericField("Initial frame: ", 1, 0);
+		gd.addNumericField("Final frame: ", 1, 0);
 		gd.addStringField("Filetype: ", ".tif");
-		gd.addChoice("Filename Type: ", prefixChoices, "Default (e.g. \"00001.tif\")");
-		gd.addChoice("Output Image:", choices, "32-bit");
-		gd.addCheckbox("Save by Frames?", false);
+		gd.addChoice("Filename type: ", prefixChoices, "Default (e.g. \"00001.tif\")");
+		gd.addChoice("Output image:", choices, "32-bit");
+		gd.addCheckbox("Save by frames?", false);
 		gd.addCheckbox("Deconstruct hyperstack?", false);
 
 		gd.showDialog();
@@ -93,6 +89,7 @@ public class Make_Hyperstack implements PlugInFilter {
 			return false;
 
 		// get entered values
+		ref_selection = gd.getNextChoice();
 		z_start = gd.getNextNumber();
 		z_final = gd.getNextNumber();
 		spacing = gd.getNextNumber();
@@ -103,6 +100,12 @@ public class Make_Hyperstack implements PlugInFilter {
 		choice = gd.getNextChoice();
 		save_frames = gd.getNextBoolean();
 		split_stack = gd.getNextBoolean();
+		
+		image_ref = WindowManager.getImage(diu.getImageTitle(ref_selection));
+		width = image_ref.getProcessor().getWidth();
+		height = image_ref.getProcessor().getHeight();
+		slices = image_ref.getNSlices();
+		frames = image_ref.getNFrames();
 		
 		// get the directory and determine if the file system uses '\' or '/'
 		if (!split_stack)
@@ -212,8 +215,7 @@ public class Make_Hyperstack implements PlugInFilter {
 				hyperStack.show();
 		}
 		if (split_stack && save_frames) {
-			float[][][][] imageMat = diu.getMatrix4D(image);
-			image.close();
+			float[][][][] imageMat = diu.getMatrix4D(image_ref);
 			for (int i = 0; i < frames; i++) {
 				IJ.showProgress(i, frames);
 				ImagePlus tempImg = diu.reassign(imageMat[i], choice, Integer.toString(i));

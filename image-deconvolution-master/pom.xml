@@ -7,7 +7,7 @@
 
     <groupId>edu.pdx</groupId>
     <artifactId>Deconvolve_Image</artifactId>
-    <version>1.9.4</version>
+    <version>1.9.5</version>
 
     <name>Deconvolution</name>
     <description>This plugin deconvolves reconstructed DHM images.</description>

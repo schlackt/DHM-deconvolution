@@ -13,6 +13,7 @@ import java.util.Random;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
@@ -25,7 +26,7 @@ import ij.process.ImageProcessor;
  * @author Trevor Schlack
  */
 public class Resize_PSF implements PlugInFilter {
-	protected ImagePlus image;
+	protected ImagePlus image_ref;
 
 	// image property members
 	private int width;
@@ -37,6 +38,7 @@ public class Resize_PSF implements PlugInFilter {
 	private int startY;
 	private int randInt;
 	private boolean fill;
+	private String ref_selection;
 	private Deconvolve_Image_Utils diu = new Deconvolve_Image_Utils();
 
 	@Override
@@ -45,27 +47,22 @@ public class Resize_PSF implements PlugInFilter {
 			showAbout();
 			return DONE;
 		}
-
-		image = imp;
 		return DOES_8G | DOES_16 | DOES_32 | DOES_RGB;
 	}
 
 	@Override
-	public void run(ImageProcessor ip) {
-		// get dimensions of image
-		width = ip.getWidth();
-		height = ip.getHeight();
-		slices = image.getNSlices();
-		
+	public void run(ImageProcessor ip) {		
 		if (showDialog())
 			process(ip);
 	}
 	
 	private boolean showDialog() {
 		GenericDialog gd = new GenericDialog("PSF Setup");
-		gd.addNumericField("New Height (px):", 2048, 0);
-		gd.addNumericField("New Width (px):", 2048, 0);
-		gd.addCheckbox("Fill Randomly?", false);
+		String[] image_list = diu.imageList();
+		gd.addChoice("Image to resize: ", image_list, image_list[0]);
+		gd.addNumericField("New height (px):", 2048, 0);
+		gd.addNumericField("New width (px):", 2048, 0);
+		gd.addCheckbox("Fill randomly?", false);
 		
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -74,6 +71,11 @@ public class Resize_PSF implements PlugInFilter {
 		new_height = (int) gd.getNextNumber();
 		new_width = (int) gd.getNextNumber();
 		fill = gd.getNextBoolean();
+		
+		image_ref = WindowManager.getImage(diu.getImageTitle(ref_selection));
+		width = image_ref.getProcessor().getWidth();
+		height = image_ref.getProcessor().getHeight();
+		slices = image_ref.getNSlices();
 		
 		return true;
 	}
@@ -84,7 +86,7 @@ public class Resize_PSF implements PlugInFilter {
 		float[] border = new float[2*width + 2*height];
 		float median;
 		Random rand = new Random();
-		oldPSF = diu.getMatrix3D(image);
+		oldPSF = diu.getMatrix3D(image_ref);
 		startX = (new_width - width) / 2;
 		startY = (new_height - width) / 2;
 		
