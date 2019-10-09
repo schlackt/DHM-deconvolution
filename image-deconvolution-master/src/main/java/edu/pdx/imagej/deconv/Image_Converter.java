@@ -57,6 +57,13 @@ public class Image_Converter implements PlugInFilter {
 		amp_selection = gd.getNextChoice();
 		phase_selection = gd.getNextChoice();
 		
+		// ensure required images are entered
+		if (amp_selection == "<none>" || phase_selection == "<none>") {
+			IJ.showMessage("Two images are required for conversion.");
+			return showDialog();
+		}
+
+		
 		return true;
 	}
 	

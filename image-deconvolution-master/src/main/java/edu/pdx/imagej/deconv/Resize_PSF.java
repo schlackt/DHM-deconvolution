@@ -72,6 +72,12 @@ public class Resize_PSF implements PlugInFilter {
 		new_width = (int) gd.getNextNumber();
 		fill = gd.getNextBoolean();
 		
+		// ensure required images are entered
+		if (ref_selection == "<none>") {
+			IJ.showMessage("Input image required.");
+			return showDialog();
+		}
+				
 		image_ref = WindowManager.getImage(diu.getImageTitle(ref_selection));
 		width = image_ref.getProcessor().getWidth();
 		height = image_ref.getProcessor().getHeight();

@@ -114,6 +114,16 @@ public class Regularization implements PlugInFilter {
 		decon_hyper = !gd.getNextBoolean();
 		save_files = gd.getNextBoolean();
 		
+		// ensure required images are entered
+		if (amp_selection == "<none>" || PSF_amp_selection == "<none>") {
+			IJ.showMessage("Amplitude/Real images are required for deconvolution.");
+			return showDialog();
+		}
+		if (decon_choice != "Standard" && (phase_selection == "<none>" || PSF_phase_selection == "<none>")) {
+			IJ.showMessage("Phase/Imaginary images are required for complex deconvolution.");
+			return showDialog();
+		}
+		
 		if (choice == "8-bit")
 			choice = "GRAY8";
 		else if (choice == "16-bit")

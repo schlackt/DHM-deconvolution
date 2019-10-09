@@ -116,6 +116,17 @@ public class Deconvolve_Iterative implements PlugInFilter {
 		save_files = gd.getNextBoolean();
 		plot_error = gd.getNextBoolean();
 		
+		// ensure required images are entered
+		if (amp_selection == "<none>" || PSF_amp_selection == "<none>") {
+			IJ.showMessage("Amplitude/Real images are required for deconvolution.");
+			return showDialog();
+		}
+		if (decon_choice != "Standard" && (phase_selection == "<none>" || PSF_phase_selection == "<none>")) {
+			IJ.showMessage("Phase/Imaginary images are required for complex deconvolution.");
+			return showDialog();
+		}
+				
+		
 		// show dialog to obtain custom value of beta
 		if (!getSNR) {
 			GenericDialog gd2 = new GenericDialog("Custom Beta");

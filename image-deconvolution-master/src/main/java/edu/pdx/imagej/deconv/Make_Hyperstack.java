@@ -107,6 +107,12 @@ public class Make_Hyperstack implements PlugInFilter {
 		slices = image_ref.getNSlices();
 		frames = image_ref.getNFrames();
 		
+		// ensure required images are entered
+		if (ref_selection == "<none>") {
+			IJ.showMessage("Reference image required.");
+			return showDialog();
+		}
+		
 		// get the directory and determine if the file system uses '\' or '/'
 		if (!split_stack)
 			directory = diu.getDirectory("Select the image directory:");

@@ -63,7 +63,6 @@ public class Get_Error implements PlugInFilter {
 		gd.addChoice("Original amplitude/real image: ", image_list, image_list[image_list.length - 1]);
 		gd.addChoice("Original phase/imaginary image: ", image_list, image_list[image_list.length - 1]);
 		
-		
 		gd.showDialog();
 		if (gd.wasCanceled())
 			return false;
@@ -75,6 +74,16 @@ public class Get_Error implements PlugInFilter {
 		PSF_phase_selection = gd.getNextChoice();
 		orig_amp_selection = gd.getNextChoice();
 		orig_phase_selection = gd.getNextChoice();
+		
+		// ensure required images are entered
+		if (amp_selection == "<none>" || PSF_amp_selection == "<none>" || orig_amp_selection == "<none>") {
+			IJ.showMessage("Amplitude/Real images are required for error calculation.");
+			return showDialog();
+		}
+		if (style != "Standard" && (phase_selection == "<none>" || PSF_phase_selection == "<none>" || orig_phase_selection == "<none>")) {
+			IJ.showMessage("Phase/Imaginary images are required for complex deconvolution styles.");
+			return showDialog();
+		}
 		
 		return true;
 	}

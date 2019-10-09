@@ -110,7 +110,17 @@ public class Hyper_Wiener_Filter implements PlugInFilter {
 		intensity = gd.getNextBoolean();
 		get_error = gd.getNextBoolean();
 		decon_hyper = !gd.getNextBoolean();
-		save_files = gd.getNextBoolean();			
+		save_files = gd.getNextBoolean();	
+		
+		// ensure required images are entered
+		if (amp_selection == "<none>" || PSF_amp_selection == "<none>") {
+			IJ.showMessage("Amplitude/Real images are required for deconvolution.");
+			return showDialog();
+		}
+		if (decon_choice != "Standard" && (phase_selection == "<none>" || PSF_phase_selection == "<none>")) {
+			IJ.showMessage("Phase/Imaginary images are required for complex deconvolution.");
+			return showDialog();
+		}
 		
 		// input dialog appears if user does not want to calculate the snr
 		if (!getSNR) {
