@@ -6,6 +6,7 @@ import ij.ImageStack;
 import ij.WindowManager;
 import ij.io.DirectoryChooser;
 import ij.io.OpenDialog;
+import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import org.jtransforms.fft.FloatFFT_3D;
 import java.math.BigDecimal;
@@ -547,34 +548,8 @@ public class Deconvolve_Image_Utils {
 	
 	// covert 3D matrix to ImagePlus image
 	public ImagePlus reassign(float[][][] testMat, String impType, String title) {
-		int frames = 1;
-		int width = testMat[0][0].length;
-		int height = testMat[0].length;
-		int slices = testMat.length;
-		
-		// create blank 32-bit hyperstack
-		ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, 32);
-		ImageStack stack = testImage.getStack();
-		
-		// fill the hyperstack using z-positions given by getStackIndex. Slices are 1-based 
-		for (int j = 1; j <= slices; j++)
-			for (int k = 0; k < height; k++)
-				for (int l = 0; l < width; l++)
-					stack.setVoxel(l, k, testImage.getStackIndex(1, j, 1)-1, (double)testMat[j-1][k][l]);
-		
-		// convert image stack to correct architecture with scaling
-		if (impType != "GRAY32") {
-			ImageProcessor ip;
-			for (int i = 1; i <= testImage.getStackSize(); i++) {
-				ip = testImage.getStack().getProcessor(i);
-				if (impType == "GRAY16")
-					ip = ip.convertToShortProcessor(true);
-				else
-					ip = ip.convertToByte(true);
-			}
-		}
-
-		return testImage;
+		float [][][][] four_dim = {testMat};
+		return reassign(four_dim, impType, title);
 	}
 	
 	// covert 4D matrix to ImagePlus image
@@ -583,16 +558,17 @@ public class Deconvolve_Image_Utils {
 		int width = testMat[0][0][0].length;
 		int height = testMat[0][0].length;
 		int slices = testMat[0].length;
-		
+	
 		ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, 32);
 		ImageStack stack = testImage.getStack();
-		
 		for (int i = 1; i <= frames; i++) 
-			for (int j = 1; j <= slices; j++)
-				for (int k = 0; k < height; k++)
-					for (int l = 0; l < width; l++)
-						stack.setVoxel(l, k, testImage.getStackIndex(1, j, i)-1, (double)testMat[i-1][j-1][k][l]);
-		
+			for (int j = 1; j <= slices; j++) {
+				ImageProcessor ip = new FloatProcessor(testMat[i-1][j-1]);
+				ip = ip.rotateRight();
+				ip.flipHorizontal();
+				stack.setProcessor(ip, testImage.getStackIndex(1, j, i));
+			}
+	
 		// convert image stack to correct architecture with scaling
 		if (impType != "GRAY32") {
 			ImageProcessor ip;
