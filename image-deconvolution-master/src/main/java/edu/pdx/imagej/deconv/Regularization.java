@@ -301,18 +301,26 @@ public class Regularization implements PlugInFilter {
 			if (decon_choice == "Standard") {
 				ampMat = diu.getAmplitudeMat(ru.guess);
 				diu.formatIFFT(ampMat);
+				
+				diu.resliceER(ampMat);
 			}
 			else if (decon_choice == "Complex (Polar)") {
 				ampMat = diu.getAmplitudeMat(ru.guess);
 				phaseMat = diu.getPhaseMat(ru.guess);
 				diu.formatIFFT(ampMat);
 				diu.formatIFFT(phaseMat);
+				
+				diu.resliceER(ampMat);
+				diu.resliceER(phaseMat);
 			}
 			else {
 				ampMat = diu.getReMat(ru.guess);
 				phaseMat = diu.getImMat(ru.guess);
 				diu.formatIFFT(ampMat);
 				diu.formatIFFT(phaseMat);
+				
+				diu.resliceER(ampMat);
+				diu.resliceER(phaseMat);
 			}
 			
 			if (decon_hyper) {
@@ -409,6 +417,9 @@ public class Regularization implements PlugInFilter {
 		}
 		
 		if (!decon_hyper && !save_files) {
+			diu.resliceER(imgMat);
+			diu.resliceER(imgMatPhase);
+			
 			if (decon_choice == "Standard") {
 				ImagePlus result = diu.reassign(imgMat, choice, "Result");
 				result.setCalibration(cal);	

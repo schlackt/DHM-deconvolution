@@ -13,6 +13,7 @@ import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.plugin.filter.PlugInFilter;
+import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
 /**
@@ -82,7 +83,7 @@ public class Make_PSF implements PlugInFilter {
 	}
 	
 	public void process(ImageProcessor ip) {
-		float[][][] pointImageMat = new float[1][height][width];
+		float[][] pointImageMat = new float[height][width];	
 		int centerX = (width / 2) - 1;
 		int centerY = (height / 2) - 1;
 		
@@ -90,17 +91,18 @@ public class Make_PSF implements PlugInFilter {
 			for (int j = 0; j < width; j++) {
 				if (Math.pow(i - centerY, 2) + Math.pow(j - centerX, 2) <= pointRad*pointRad)
 					if (expVals)
-						pointImageMat[0][i][j] = min;
+						pointImageMat[i][j] = min;
 					else
-						pointImageMat[0][i][j] = 0;
+						pointImageMat[i][j] = (float) 0.0;
 				else
 					if (expVals)
-						pointImageMat[0][i][j] = max;
+						pointImageMat[i][j] = max;
 					else
-						pointImageMat[0][i][j] = 255;
+						pointImageMat[i][j] = (float) 255.0;
 			}
-				
-		ImagePlus pointImage = diu.reassign(pointImageMat, "GRAY32", "Result");
+		
+		ImageProcessor ip2 =  new FloatProcessor(pointImageMat);
+		ImagePlus pointImage = new ImagePlus("Result", ip2);
 		pointImage.show();
 	}
 	

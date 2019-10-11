@@ -663,18 +663,18 @@ public class Deconvolve_Image_Utils {
     		}
     	
     	for (int i = 0; i < slices; i++) {
-    		for (int j = 0; j <= height/2; j++)
-    			for (int k = 0; k <= width/2; k++) {
+    		for (int j = 0; j < halfHeight; j++)
+    			for (int k = 0; k < halfWidth; k++) {
     				placehold = reformat[i][j][k];
-    				reformat[i][j][k] = reformat[i][j+halfHeight-1][k+halfWidth-1];
-    				reformat[i][j+halfHeight-1][k+halfWidth-1] = placehold;
+    				reformat[i][j][k] = reformat[i][j+halfHeight][k+halfWidth];
+    				reformat[i][j+halfHeight][k+halfWidth] = placehold;
     			}
     		
-    		for (int j = 0; j <= height / 2 - 2; j++)
-    			for (int k = width/2 + 1; k < width; k++) {
+    		for (int j = 0; j < halfHeight; j++)
+    			for (int k = halfWidth; k < width; k++) {
     				placehold = reformat[i][j][k];
-    				reformat[i][j][k] = reformat[i][j+halfHeight+1][k-halfWidth-1];
-    				reformat[i][j+halfHeight+1][k-halfWidth-1] = placehold;
+    				reformat[i][j][k] = reformat[i][j+halfHeight][k-halfWidth];
+    				reformat[i][j+halfHeight][k-halfWidth] = placehold;
     			}
     	}
  
@@ -817,5 +817,21 @@ public class Deconvolve_Image_Utils {
 		String after_colon = selection.split(": ")[1];
 		
 		return after_colon;
+	}
+	
+	public void resliceER (float[][][][] imageMat) {
+		int frames = imageMat.length;
+		int slices = imageMat[0].length;
+		int height = imageMat[0][0].length;
+		int width = imageMat[0][0][0].length;
+		float[][] temp = new float[height][width];
+		
+		for (int i = 0; i < frames; i ++)
+			for (int j = 0; j < (slices - 1) / 2; j++) {
+				temp = imageMat[i][slices - 1];
+				for (int k = slices - 1; k >= 1; k--)
+					imageMat[i][k] = imageMat[i][k-1];
+				imageMat[i][0] = temp;
+			}
 	}
 }
