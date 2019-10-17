@@ -68,6 +68,7 @@ public class Resize_PSF implements PlugInFilter {
 		if (gd.wasCanceled())
 			return false;
 		
+		ref_selection = gd.getNextChoice();
 		new_height = (int) gd.getNextNumber();
 		new_width = (int) gd.getNextNumber();
 		fill = gd.getNextBoolean();
