@@ -1,11 +1,11 @@
 package edu.pdx.imagej.deconv;
 
-import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.WindowManager;
 import ij.io.DirectoryChooser;
 import ij.io.OpenDialog;
+import ij.plugin.HyperStackConverter;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import org.jtransforms.fft.FloatFFT_3D;
@@ -559,29 +559,31 @@ public class Deconvolve_Image_Utils {
 		int height = testMat[0][0].length;
 		int slices = testMat[0].length;
 	
-		ImagePlus testImage = IJ.createHyperStack(title, width, height, 1, slices, frames, 32);
-		ImageStack stack = testImage.getStack();
+		ImageStack stack = new ImageStack(width, height);
+		ImageProcessor ref = new FloatProcessor(testMat[0][0]);
 		for (int i = 1; i <= frames; i++) 
 			for (int j = 1; j <= slices; j++) {
 				ImageProcessor ip = new FloatProcessor(testMat[i-1][j-1]);
 				ip = ip.rotateRight();
 				ip.flipHorizontal();
-				stack.setProcessor(ip, testImage.getStackIndex(1, j, i));
+				// convert image stack to correct architecture with scaling
+				if (impType != "GRAY32")
+					if (impType == "GRAY16")
+						ip = ip.convertToShortProcessor(true);
+					else
+						ip = ip.convertToByte(true);
+				
+				stack.addSlice(ip);
+				if (i == Math.round(frames/2) && j == Math.round(slices/2))
+					ref = ip;
 			}
-	
-		// convert image stack to correct architecture with scaling
-		if (impType != "GRAY32") {
-			ImageProcessor ip;
-			for (int i = 1; i <= testImage.getStackSize(); i++) {
-				ip = testImage.getStack().getProcessor(i);
-				if (impType == "GRAY16")
-					ip = ip.convertToShortProcessor(true);
-				else
-					ip = ip.convertToByte(true);
-			}
+		stack.update(ref);
+		ImagePlus result = new ImagePlus(title, stack);
+		if (frames > 1) {
+			return HyperStackConverter.toHyperStack(result, 1, slices, frames);
 		}
 
-		return testImage;
+		return result;
 	}
 	
 	// shift a 3D matrix so that all values fall between newMin and newMax

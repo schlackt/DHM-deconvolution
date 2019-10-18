@@ -114,8 +114,13 @@ public class Make_Hyperstack implements PlugInFilter {
 		}
 		
 		// get the directory and determine if the file system uses '\' or '/'
-		if (!split_stack)
+		if (!split_stack) {
 			directory = diu.getDirectory("Select the image directory:");
+			if (directory.indexOf('\\') >= 0)
+				divisor = "\\";
+			else
+				divisor = "/";
+		}
 		
 		// get the save directory if save_frames is true. Create a folder for the images.
 		if (save_frames) {
@@ -219,6 +224,7 @@ public class Make_Hyperstack implements PlugInFilter {
 			}
 			if (!save_frames)
 				hyperStack.show();
+		
 		}
 		if (split_stack && save_frames) {
 			float[][][][] imageMat = diu.getMatrix4D(image_ref);
